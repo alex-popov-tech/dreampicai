@@ -1,0 +1,53 @@
+package auth
+
+import "dreampicai/view/layout"
+
+type SigninErrors struct {
+	Email    []error
+	Password []error
+	Others   []error
+}
+type SigninData struct {
+	Email    string
+	Password string
+}
+
+templ Signin() {
+	@layout.HomeLayout() {
+		<div class="bg-base-300 rounded-lg shadow-xl p-8 max-w-md w-full mt-36 mx-auto">
+			@SigninForm(SigninData{}, SigninErrors{})
+		</div>
+	}
+}
+
+templ SigninForm(data SigninData, errors SigninErrors) {
+	<form hx-trigger="submit" hx-post="/signin" hx-swap="outerHTML" class="flex flex-col">
+		<h1 class="text-3xl font-bold text-center mb-6">Log In to Dreampicai</h1>
+		<label class="form-control w-full max-w-md mb-2">
+			<div class="label">
+				<span class="label-text text-xl">Email</span>
+			</div>
+			<input value={ data.Email } type="email" name="email" required autocomplete="off" placeholder="chris@gmail.com" class={ "input input-bordered w-full max-w-md focus:outline-none", templ.KV("border-error", len(errors.Email) > 0) }/>
+			<div class="label">
+				for _, it := range errors.Password {
+					<span class="label-text-alt text-error">{ it.Error() }</span>
+				}
+			</div>
+		</label>
+		<label class="form-control w-full max-w-md mb-4">
+			<div class="label">
+				<span class="label-text text-xl">Password</span>
+			</div>
+			<input value={ data.Password } type="password" name="password" required autocomplete="off" class={ "input input-bordered w-full max-w-md focus:outline-none", templ.KV("border-error", len(errors.Password) > 0) }/>
+			<div class="label flex flex-col items-start">
+				for _, it := range errors.Password {
+					<span class="label-text-alt text-error">{ it.Error() }</span>
+				}
+				for _, it := range errors.Others {
+					<span class="label-text-alt text-error">{ it.Error() }</span>
+				}
+			</div>
+		</label>
+		<button type="submit" class="btn btn-primary text-xl mt-4">Log In <i class="fa-solid fa-arrow-right"></i></button>
+	</form>
+}

@@ -1,0 +1,9 @@
+package auth
+
+templ CallbackScript() {
+	<script>
+		var url = window.location.href;
+		var newURL = url.replace("#", "?")
+		window.location = newURL
+	</script>
+}
