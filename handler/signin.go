@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"dreampicai/pkg/supabase"
 	"dreampicai/utils"
 	"dreampicai/view/auth"
@@ -24,9 +25,10 @@ func Signin(w http.ResponseWriter, r *http.Request) error {
 		return auth.SigninForm(loginData, loginErrors).Render(r.Context(), w)
 	}
 
-	session, err := supabase.Client.Auth.SignInWithEmailPassword(email, password)
+	authDetails, err := supabase.Client.Auth.SignIn(context.Background(), supabase.UserCredentials{Email: email, Password: password})
+
 	if err != nil {
-		loginErrors.Others = []error{supabase.TryGerSupabaseErrorMessage(err)}
+		loginErrors.Others = []error{err}
 		return auth.SigninForm(loginData, loginErrors).Render(r.Context(), w)
 	}
 
@@ -35,14 +37,14 @@ func Signin(w http.ResponseWriter, r *http.Request) error {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		Value:    session.AccessToken,
+		Value:    authDetails.AccessToken,
 	}
 	rtCookie := http.Cookie{
 		Name:     "rt",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		Value:    session.RefreshToken,
+		Value:    authDetails.RefreshToken,
 	}
 	http.SetCookie(w, &atCookie)
 	http.SetCookie(w, &rtCookie)

@@ -1,13 +1,12 @@
 package handler
 
 import (
+	"context"
 	"dreampicai/pkg/supabase"
 	"dreampicai/utils"
 	"dreampicai/view/auth"
 	"errors"
 	"net/http"
-
-	"github.com/supabase-community/gotrue-go/types"
 )
 
 func SignupView(w http.ResponseWriter, r *http.Request) error {
@@ -33,9 +32,9 @@ func Signup(w http.ResponseWriter, r *http.Request) error {
 		return auth.SignupForm(loginData, loginErrors).Render(r.Context(), w)
 	}
 
-	_, err := supabase.Client.Auth.Signup(types.SignupRequest{Email: email, Password: password, Data: map[string]interface{}{"redirectTo": "https://dreampicai.com/"}})
+	_, err := supabase.Client.Auth.SignUp(context.Background(), supabase.UserCredentials{Email: email, Password: password})
 	if err != nil {
-		loginErrors.Others = []error{supabase.TryGerSupabaseErrorMessage(err)}
+		loginErrors.Others = []error{err}
 		return auth.SignupForm(loginData, loginErrors).Render(r.Context(), w)
 	}
 

@@ -6,7 +6,17 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 )
+
+func GetTokensFromQuery(values url.Values) (accessToken string, refreshToken string, err error) {
+	accessToken = values.Get("access_token")
+	refreshToken = values.Get("refresh_token")
+	if accessToken == "" || refreshToken == "" {
+		return "", "", fmt.Errorf("Cannot get 'access_token' or 'refresh_token' from query: %v", values)
+	}
+	return accessToken, refreshToken, nil
+}
 
 func MakeRoute(handler func(w http.ResponseWriter, r *http.Request) error) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

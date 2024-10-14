@@ -23,10 +23,7 @@ func initialize() error {
 		return fmt.Errorf("Error loading environment variables \n%v\n", err)
 	}
 
-	_, err = supabase.CreateClient(env.SupabaseProjectURL, env.SupabaseServiceSecretKey)
-	if err != nil {
-		return fmt.Errorf("Error creating Supabase client \n%v\n", err)
-	}
+	supabase.InitClient(env.SupabaseProjectURL, env.SupabaseServiceSecretKey)
 
 	return nil
 }
