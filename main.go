@@ -42,6 +42,7 @@ func main() {
 
 	mux.Handle("GET /signin", utils.MakeRoute(handler.SigninView))
 	mux.Handle("POST /signin", utils.MakeRoute(handler.Signin))
+	mux.Handle("/signin/github", utils.MakeRoute(handler.SigninWithGithub))
 
 	mux.Handle("GET /signup", utils.MakeRoute(handler.SignupView))
 	mux.Handle("POST /signup", utils.MakeRoute(handler.Signup))

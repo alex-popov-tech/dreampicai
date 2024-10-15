@@ -5,6 +5,7 @@ import (
 )
 
 type UserCredentials = s.UserCredentials
+type ProviderSignInOptions = s.ProviderSignInOptions
 
 var Client *s.Client
 

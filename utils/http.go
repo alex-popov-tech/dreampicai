@@ -68,6 +68,6 @@ func AuthProtectedMiddleware(handler http.Handler) http.Handler {
 			handler.ServeHTTP(w, r)
 			return
 		}
-		http.Redirect(w, r, "/signin", http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("/signin?redirect=%s", r.URL.Path), http.StatusFound)
 	})
 }

@@ -15,6 +15,7 @@ type Env struct {
 	SupabasePublicKey        string `env:"SUPABASE_PUBLIC_KEY" validate:"required"`
 	SupabaseServiceSecretKey string `env:"SUPABASE_SERVICE_SECRET_KEY" validate:"required"`
 	SupabaseJWTSecret        string `env:"SUPABASE_JWT_SECRET" validate:"required"`
+	GithubAuthRedirect       string `env:"GITHUB_AUTH_REDIRECT" validate:"required,url"`
 }
 
 func ValidateEnv() (Env, error) {

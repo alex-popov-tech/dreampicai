@@ -12,15 +12,15 @@ type SigninData struct {
 	Password string
 }
 
-templ Signin() {
+templ Signin(redirect string) {
 	@layout.HomeLayout() {
 		<div class="bg-base-300 rounded-lg shadow-xl p-8 max-w-md w-full mt-36 mx-auto">
-			@SigninForm(SigninData{}, SigninErrors{})
+			@SigninForm(SigninData{}, SigninErrors{}, redirect)
 		</div>
 	}
 }
 
-templ SigninForm(data SigninData, errors SigninErrors) {
+templ SigninForm(data SigninData, errors SigninErrors, redirect string) {
 	<form hx-trigger="submit" hx-post="/signin" hx-swap="outerHTML" class="flex flex-col">
 		<h1 class="text-3xl font-bold text-center mb-6">Log In to Dreampicai</h1>
 		<label class="form-control w-full max-w-md mb-2">
@@ -28,8 +28,8 @@ templ SigninForm(data SigninData, errors SigninErrors) {
 				<span class="label-text text-xl">Email</span>
 			</div>
 			<input value={ data.Email } type="email" name="email" required autocomplete="off" placeholder="chris@gmail.com" class={ "input input-bordered w-full max-w-md focus:outline-none", templ.KV("border-error", len(errors.Email) > 0) }/>
-			<div class="label">
-				for _, it := range errors.Password {
+			<div class="label flex flex-col items-start">
+				for _, it := range errors.Email {
 					<span class="label-text-alt text-error">{ it.Error() }</span>
 				}
 			</div>
@@ -48,6 +48,9 @@ templ SigninForm(data SigninData, errors SigninErrors) {
 				}
 			</div>
 		</label>
-		<button type="submit" class="btn btn-primary text-xl mt-4">Log In <i class="fa-solid fa-arrow-right"></i></button>
+		<button type="submit" class="btn btn-primary text-xl mt-4">Sign In <i class="fa-solid fa-arrow-right"></i></button>
+		<div class="divider">OR</div>
+		<a href="/signin/github" class="btn btn-primary text-xl mt-4">Sign in with Github <i class="fa-brands fa-github"></i></a>
+		<input type="hidden" class="hidden" name="redirect" value={ redirect }/>
 	</form>
 }
