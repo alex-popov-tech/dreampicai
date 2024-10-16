@@ -3,10 +3,14 @@ package utils
 import (
 	"context"
 	"dreampicai/model"
+	"dreampicai/pkg/supabase"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func GetTokensFromQuery(values url.Values) (accessToken string, refreshToken string, err error) {
@@ -41,18 +45,52 @@ func MakeRoute(handler func(w http.ResponseWriter, r *http.Request) error) http.
 func UserAuthMiddleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atCookie, err := r.Cookie("at")
-		user := model.User{}
+		at := atCookie.Value
+		rtCookie, err := r.Cookie("rt")
+		rt := rtCookie.Value
+		requestWithEmptyUserContext := r.WithContext(context.WithValue(r.Context(), model.UserContextKey, model.User{}))
 		if err != nil {
 			log.Printf("UserAuthMiddleware, cookie not found: %v\n", err)
-			handler.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), model.UserContextKey, user)))
+			handler.ServeHTTP(w, requestWithEmptyUserContext)
 			return
 		}
-		if atCookie.Value == "" {
-			log.Printf("UserAuthMiddleware, cookie is empty: %v\n", err)
-			handler.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), model.UserContextKey, user)))
+		if at == "" {
+			log.Printf("UserAuthMiddleware, access_token cookie is empty: %v\n", err)
+			handler.ServeHTTP(w, requestWithEmptyUserContext)
 			return
 		}
-		user, err = ParseSupabaseToken(atCookie.Value)
+		if rt == "" {
+			log.Printf("UserAuthMiddleware, refresh_token cookie is empty: %v\n", err)
+			handler.ServeHTTP(w, requestWithEmptyUserContext)
+			return
+		}
+		user, err := ParseSupabaseToken(at)
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			authDetails, err := supabase.Client.Auth.RefreshUser(context.Background(), at, rt)
+			if err != nil {
+				log.Printf("UserAuthMiddleware, access_token is expired and cannot be refreshed: %v\n", err)
+				handler.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), model.UserContextKey, user)))
+				return
+			}
+			atCookie := http.Cookie{
+				Name:     "at",
+				Path:     "/",
+				HttpOnly: true,
+				Secure:   true,
+				Value:    authDetails.AccessToken,
+			}
+			rtCookie := http.Cookie{
+				Name:     "rt",
+				Path:     "/",
+				HttpOnly: true,
+				Secure:   true,
+				Value:    authDetails.RefreshToken,
+			}
+			http.SetCookie(w, &atCookie)
+			http.SetCookie(w, &rtCookie)
+			handler.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), model.UserContextKey, model.User{Email: authDetails.User.Email, ID: authDetails.User.ID, IsLoggedIn: true})))
+			return
+		}
 		if err != nil {
 			log.Printf("UserAuthMiddleware, jwt parsing error: %v\n", err)
 			handler.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), model.UserContextKey, user)))

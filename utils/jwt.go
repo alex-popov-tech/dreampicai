@@ -28,5 +28,5 @@ func ParseSupabaseToken(token string) (model.User, error) {
 		Email:      (claims["email"].(string)),
 		IsLoggedIn: true,
 	}
-	return user, err
+	return user, nil
 }

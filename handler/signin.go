@@ -5,7 +5,6 @@ import (
 	"dreampicai/pkg/supabase"
 	"dreampicai/utils"
 	"dreampicai/view/auth"
-	"fmt"
 	"net/http"
 	"os"
 )
@@ -52,7 +51,6 @@ func Signin(w http.ResponseWriter, r *http.Request) error {
 	http.SetCookie(w, &atCookie)
 	http.SetCookie(w, &rtCookie)
 
-	fmt.Println("signin success, redirect is", redirect)
 	if redirect != "" {
 		w.Header().Add("HX-Redirect", redirect)
 	} else {
