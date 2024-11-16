@@ -2,11 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"log"
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 )
 
 // type NoHashingMap struct {
@@ -23,7 +23,7 @@ import (
 // func (it NoHashingMap) Get(key string) int64 {
 // }
 
-// go run cmd/scanner/scanner.go  104.55s user 4.98s system 100% cpu 1:48.68 total
+// go run cmd/scanner/scanner.go  81.36s user 4.22s system 99% cpu 1:25.93 total
 func main() {
 	file, _ := os.Open("./testfile")
 	defer file.Close()
@@ -40,22 +40,21 @@ func main() {
 	scanner := bufio.NewScanner(file)
 	// read till \n char
 	for scanner.Scan() {
-		// conv to string, possible replace with bytes?
-		line := scanner.Text()
+		lineBytes := scanner.Bytes()
 		// instead of cut, we can slice last 2 chars?
-		city, temperature, found := strings.Cut(line, ";")
+		cityBytes, temperatureBytes, found := bytes.Cut(lineBytes, []byte{59}) // []byte{59} == ";"
 		if !found {
-			log.Fatal("Invalid line format " + line)
+			log.Fatal("Invalid line format " + string(lineBytes))
 		}
 		// better parseint?
 		// use unicode table to calculate digits from position of them in unicode?
-		temp, err := strconv.ParseInt(temperature, 10, 8)
+		temp, err := strconv.ParseInt(string(temperatureBytes), 10, 8)
 		if !found {
 			log.Fatal("Cannot parse float", err)
 		}
-		c, ok := cities[city]
+		c, ok := cities[string(cityBytes)]
 		if !ok {
-			cities[city] = &City{Count: 1, Sum: temp, Min: temp, Max: temp}
+			cities[string(cityBytes)] = &City{Count: 1, Sum: temp, Min: temp, Max: temp}
 			continue
 		}
 		c.Count += 1
