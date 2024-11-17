@@ -9,12 +9,20 @@ import (
 )
 
 const semicolonByte = 59
+	"github.com/pkg/profile"
 
 var semicolonBytes = []byte{59}
 var linebreakByte = "\n"[0]
 
 // go run cmd/scanner/scanner.go  67.98s user 3.29s system 99% cpu 1:11.67 total
 func main() {
+	p := profile.Start(
+		profile.CPUProfile,
+		// profile.MemProfile,
+		profile.ProfilePath("."),
+		profile.NoShutdownHook,
+	)
+	defer p.Stop()
 	start := time.Now()
 	file, _ := os.Open("./testfile")
 	afterOpen := time.Now()
