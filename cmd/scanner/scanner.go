@@ -1,18 +1,16 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
+	// "github.com/pkg/profile"
 	"log"
 	"os"
 	"syscall"
 	"time"
-
-	// "github.com/pkg/profile"
 )
 
 type MMap []byte
+
 func Map(path string) (MMap, error) {
 	f, err := os.OpenFile(path, os.O_RDONLY, 0)
 	if err != nil {
@@ -46,13 +44,13 @@ func (m MMap) Unmap() error {
 
 type City struct {
 	Name  []byte
-	Sum   uint
-	Count uint
-	Min   uint
-	Max   uint
+	Sum   int
+	Count int
+	Min   int
+	Max   int
 }
 
-// go run cmd/scanner/scanner.go  51.41s user 3.09s system 98% cpu 55.426 total
+// go run cmd/scanner/scanner.go  38.26s user 2.71s system 99% cpu 41.183 total
 func main() {
 	// p := profile.Start(
 	// 	// profile.CPUProfile,
@@ -61,28 +59,25 @@ func main() {
 	// 	profile.NoShutdownHook,
 	// )
 	// defer p.Stop()
-	start := time.Now()
+	startTime := time.Now()
 	mmap, err := Map("./testfile")
 	// mmap, err := Map("./testfile_small")
+	defer mmap.Unmap()
 	if err != nil {
 		log.Fatal(err)
 	}
 	afterOpen := time.Now()
-	fmt.Println("Time spent opening file is seconds -", afterOpen.Sub(start).Seconds())
-
-	bytesReader := bytes.NewReader(mmap)
-	scanner := bufio.NewScanner(bytesReader)
-	defer mmap.Unmap()
+	fmt.Println("Time spent opening file is seconds -", afterOpen.Sub(startTime).Seconds())
 
 	cities := make(map[string]*City, 5000)
 
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	var pointer int
+	for pointer < len(mmap) {
 
-		semiIndex := bytes.IndexByte(line, ';')
-
-		city := line[:semiIndex]
-		temperature := line[semiIndex+1:]
+		start, semi, newline := nextline(mmap, pointer)
+		city := mmap[start:semi]
+		temperature := mmap[semi+1 : newline]
+		pointer = newline + 1
 
 		temp := fastParseUint(string(temperature))
 		c := cities[string(city)]
@@ -91,19 +86,16 @@ func main() {
 			cities[string(city)] = &City{
 				Name:  city,
 				Count: 1,
-				Sum:   uint(temp),
-				Min:   uint(temp),
-				Max:   uint(temp),
+				Sum:   temp,
+				Min:   temp,
+				Max:   temp,
 			}
 		} else {
 			c.Count += 1
-			c.Sum += uint(temp)
-			c.Min = min(c.Min, uint(temp))
-			c.Max = max(c.Max, uint(temp))
+			c.Sum += temp
+			c.Min = min(c.Min, temp)
+			c.Max = max(c.Max, temp)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
 	}
 
 	for _, v := range cities {
@@ -111,7 +103,23 @@ func main() {
 	}
 }
 
-func fastParseUint(s string) uint64 {
+func nextline(data []byte, pointer int) (startIndex, semiIndex, newlineIndex int) {
+	startIndex = pointer
+	for i := startIndex; ; i++ {
+		if data[i] == ';' {
+			semiIndex = i
+			continue
+		}
+		if data[i] == '\n' {
+			newlineIndex = i
+			break
+		}
+	}
+
+	return startIndex, semiIndex, newlineIndex
+}
+
+func fastParseUint(s string) int {
 	if len(s) == 0 || len(s) > 2 {
 		return 0
 	}
@@ -121,7 +129,7 @@ func fastParseUint(s string) uint64 {
 		if ch < '0' || ch > '9' {
 			return 0
 		}
-		return uint64(ch - '0')
+		return int(ch - '0')
 	}
 
 	// Two-digit parsing
@@ -129,6 +137,5 @@ func fastParseUint(s string) uint64 {
 		return 0
 	}
 
-	return uint64((s[0]-'0')*10 + (s[1] - '0'))
+	return int((s[0]-'0')*10 + (s[1] - '0'))
 }
-
