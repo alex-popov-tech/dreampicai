@@ -1,111 +1,171 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	// "github.com/pkg/profile"
-	"log"
 	"os"
+	"sync"
 	"syscall"
-	"time"
+	// "github.com/pkg/profile"
 )
 
-type MMap []byte
-
-func Map(path string) (MMap, error) {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	fi, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
-	size := fi.Size()
-
-	data, err := syscall.Mmap(
-		int(f.Fd()),
-		0,
-		int(size),
-		syscall.PROT_READ,
-		syscall.MAP_SHARED,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return MMap(data), nil
-}
-
-func (m MMap) Unmap() error {
-	return syscall.Munmap(m)
-}
+const mb = 1024 * 1024
 
 type City struct {
-	Name  []byte
+	Name  string
 	Sum   int
 	Count int
 	Min   int
 	Max   int
 }
 
-// go run cmd/scanner/scanner.go  38.26s user 2.71s system 99% cpu 41.183 total
+type Cities map[string]*City
+
+func NewCities(capacity int) *Cities {
+	cities := make(Cities, capacity)
+	return &cities
+}
+
+func (it *Cities) SetCity(name string, sum, count, minimum, maximum int) {
+	city := (*it)[name]
+	if city == nil {
+		city = &City{
+			Name:  name,
+			Sum:   sum,
+			Count: count,
+			Min:   minimum,
+			Max:   maximum,
+		}
+		(*it)[name] = city
+		return
+	}
+
+	city.Sum += sum
+	city.Count += count
+	city.Min = min(minimum, city.Min)
+	city.Max = min(maximum, city.Max)
+}
+
+// go run cmd/scanner/scanner.go  109.59s user 5.29s system 857% cpu 13.401 total
 func main() {
 	// p := profile.Start(
-	// 	// profile.CPUProfile,
-	// 	profile.MemProfile,
+	// 	profile.CPUProfile,
+	// 	// profile.MemProfile,
 	// 	profile.ProfilePath("."),
 	// 	profile.NoShutdownHook,
 	// )
 	// defer p.Stop()
-	startTime := time.Now()
-	mmap, err := Map("./testfile")
-	// mmap, err := Map("./testfile_small")
-	defer mmap.Unmap()
+
+	f, err := os.OpenFile("./testfile", os.O_RDONLY, 0)
+	// f, err := os.OpenFile("./testfile_small", os.O_RDONLY, 0)
 	if err != nil {
-		log.Fatal(err)
+		panic(err.Error())
 	}
-	afterOpen := time.Now()
-	fmt.Println("Time spent opening file is seconds -", afterOpen.Sub(startTime).Seconds())
+	defer f.Close()
 
-	cities := make(map[string]*City, 5000)
+	stat, err := f.Stat()
+	if err != nil {
+		panic(err.Error())
+	}
+	fileSize := stat.Size()
 
+	pageSize := int64(mb * 8)
+
+	tmpRows := make([]byte, 1024)
+
+	group := sync.WaitGroup{}
+
+	cities := NewCities(1000)
+	chunkCitiesChan := make(chan *Cities, 100)
+	go func() {
+		for chunk := range chunkCitiesChan {
+			for k, v := range *chunk {
+				cities.SetCity(k, v.Sum, v.Count, v.Min, v.Max)
+			}
+		}
+	}()
+
+	for index, offset := 0, int64(0); offset < fileSize; index, offset = index+1, offset+pageSize {
+		mmap := Mmap(f, offset, pageSize)
+
+		// cut first line or whatever rest of line from previous chunk
+		newlineIndexFromStart := bytes.IndexByte(mmap, '\n')
+		tmpRows = append([]byte(nil), append(tmpRows, mmap[:newlineIndexFromStart+1]...)...)
+		// tmpRows = append(tmpRows, mmap[:newlineIndexFromStart+1]...)
+		// processChunk(tmpRows, cities)
+
+		// cut whatever rest incomplete line and save for next iteration
+		newlineIndexFromEnd := bytes.LastIndexByte(mmap, '\n')
+		// ended on newline, just clean slice
+		if newlineIndexFromEnd == len(mmap)-1 {
+			tmpRows = tmpRows[:0]
+		}
+		tmpRows = append([]byte(nil), mmap[newlineIndexFromEnd+1:]...)
+
+		// process main chunk
+		group.Add(1)
+		go func() {
+			cities := NewCities(1000)
+			defer group.Done()
+			chunk := mmap[newlineIndexFromStart+1 : newlineIndexFromEnd+1]
+			processChunk(chunk, cities)
+			chunkCitiesChan <- cities
+			mmap.Unmap()
+		}()
+	}
+
+	group.Wait()
+	// all processing is done, close chan and process remaining chunks
+	close(chunkCitiesChan)
+	processChunk(tmpRows, cities)
+
+	for _, v := range *cities {
+		fmt.Println(v.Name, "Sum:", v.Sum, "Count:", v.Count, "Min:", v.Min, "Max:", v.Max)
+	}
+}
+
+type MMap []byte
+
+func Mmap(file *os.File, offset, pageSize int64) MMap {
+	if stats, _ := file.Stat(); stats.Size() < offset+pageSize {
+		pageSize = stats.Size() - offset
+	}
+	data, err := syscall.Mmap(
+		int(file.Fd()),
+		offset,
+		int(pageSize),
+		syscall.PROT_READ,
+		syscall.MAP_SHARED,
+	)
+	if err != nil {
+		panic("Cannot create mmap: " + err.Error())
+	}
+
+	return MMap(data)
+}
+
+func (m MMap) Unmap() error {
+	return syscall.Munmap(m)
+}
+
+func processChunk(chunk []byte, cities *Cities) {
 	var pointer int
-	for pointer < len(mmap) {
+	for pointer < len(chunk) {
 
-		start, semi, newline := nextline(mmap, pointer)
-		city := mmap[start:semi]
-		temperature := mmap[semi+1 : newline]
+		start, semi, newline := nextline(chunk, pointer)
+		// appendFile(chunk[start:newline+1], "./log")
+		city := chunk[start:semi]
+		temperature := chunk[semi+1 : newline]
 		pointer = newline + 1
 
 		temp := fastParseUint(string(temperature))
-		c := cities[string(city)]
-
-		if c == nil {
-			cities[string(city)] = &City{
-				Name:  city,
-				Count: 1,
-				Sum:   temp,
-				Min:   temp,
-				Max:   temp,
-			}
-		} else {
-			c.Count += 1
-			c.Sum += temp
-			c.Min = min(c.Min, temp)
-			c.Max = max(c.Max, temp)
-		}
-	}
-
-	for _, v := range cities {
-		fmt.Printf("%s, sum=%d, min=%d, max=%d, count=%d\n", v.Name, v.Sum, v.Min, v.Max, v.Count)
+		cities.SetCity(string(city), temp, 1, temp, temp)
 	}
 }
 
 func nextline(data []byte, pointer int) (startIndex, semiIndex, newlineIndex int) {
 	startIndex = pointer
-	for i := startIndex; ; i++ {
+	for i := startIndex; i < len(data); i++ {
 		if data[i] == ';' {
 			semiIndex = i
 			continue
@@ -120,21 +180,12 @@ func nextline(data []byte, pointer int) (startIndex, semiIndex, newlineIndex int
 }
 
 func fastParseUint(s string) int {
-	if len(s) == 0 || len(s) > 2 {
-		return 0
-	}
-
 	if len(s) == 1 {
 		ch := s[0]
 		if ch < '0' || ch > '9' {
 			return 0
 		}
 		return int(ch - '0')
-	}
-
-	// Two-digit parsing
-	if s[0] < '0' || s[0] > '7' || s[1] < '0' || s[1] > '9' {
-		return 0
 	}
 
 	return int((s[0]-'0')*10 + (s[1] - '0'))
