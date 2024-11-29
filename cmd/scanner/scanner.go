@@ -3,13 +3,19 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
+
+	// "github.com/pkg/profile"
 	"os"
 	"sync"
 	"syscall"
-	// "github.com/pkg/profile"
 )
 
 const mb = 1024 * 1024
+const filename = "./testfile"
+const pageSize = mb * 64
+
+// const filename = "./testfile_small"
 
 type City struct {
 	Name  string
@@ -43,40 +49,33 @@ func (it *Cities) SetCity(name string, sum, count, minimum, maximum int) {
 	city.Sum += sum
 	city.Count += count
 	city.Min = min(minimum, city.Min)
-	city.Max = min(maximum, city.Max)
+	city.Max = max(maximum, city.Max)
 }
 
-// go run cmd/scanner/scanner.go  109.59s user 5.29s system 857% cpu 13.401 total
 func main() {
 	// p := profile.Start(
-	// 	profile.CPUProfile,
-	// 	// profile.MemProfile,
+	// profile.CPUProfile,
+	// profile.MemProfile,
 	// 	profile.ProfilePath("."),
 	// 	profile.NoShutdownHook,
 	// )
 	// defer p.Stop()
 
-	f, err := os.OpenFile("./testfile", os.O_RDONLY, 0)
-	// f, err := os.OpenFile("./testfile_small", os.O_RDONLY, 0)
-	if err != nil {
-		panic(err.Error())
-	}
+	f, _ := os.OpenFile(filename, os.O_RDONLY, 0)
+	stat, _ := f.Stat()
+	fileSize := stat.Size()
 	defer f.Close()
 
-	stat, err := f.Stat()
-	if err != nil {
-		panic(err.Error())
+	pagesCount := math.Ceil(float64(fileSize) / float64(pageSize))
+	type Remaining struct {
+		start []byte
+		end   []byte
 	}
-	fileSize := stat.Size()
-
-	pageSize := int64(mb * 8)
-
-	tmpRows := make([]byte, 1024)
-
-	group := sync.WaitGroup{}
+	remainings := make([]Remaining, int64(pagesCount))
 
 	cities := NewCities(1000)
 	chunkCitiesChan := make(chan *Cities, 100)
+
 	go func() {
 		for chunk := range chunkCitiesChan {
 			for k, v := range *chunk {
@@ -85,39 +84,40 @@ func main() {
 		}
 	}()
 
+	group := sync.WaitGroup{}
+
 	for index, offset := 0, int64(0); offset < fileSize; index, offset = index+1, offset+pageSize {
-		mmap := Mmap(f, offset, pageSize)
 
-		// cut first line or whatever rest of line from previous chunk
-		newlineIndexFromStart := bytes.IndexByte(mmap, '\n')
-		tmpRows = append([]byte(nil), append(tmpRows, mmap[:newlineIndexFromStart+1]...)...)
-		// tmpRows = append(tmpRows, mmap[:newlineIndexFromStart+1]...)
-		// processChunk(tmpRows, cities)
-
-		// cut whatever rest incomplete line and save for next iteration
-		newlineIndexFromEnd := bytes.LastIndexByte(mmap, '\n')
-		// ended on newline, just clean slice
-		if newlineIndexFromEnd == len(mmap)-1 {
-			tmpRows = tmpRows[:0]
-		}
-		tmpRows = append([]byte(nil), mmap[newlineIndexFromEnd+1:]...)
-
-		// process main chunk
-		group.Add(1)
-		go func() {
-			cities := NewCities(1000)
+		go func(index int) {
+			// process main chunk
+			group.Add(1)
 			defer group.Done()
+			mmap := Mmap(f, offset, pageSize)
+			defer mmap.Unmap()
+
+			// cut first line or whatever rest of line from previous chunk
+			newlineIndexFromStart := bytes.IndexByte(mmap, '\n')
+			remainings[index].start = append([]byte(nil), mmap[:newlineIndexFromStart+1]...)
+			// cut whatever rest incomplete line and save for next iteration
+			newlineIndexFromEnd := bytes.LastIndexByte(mmap, '\n')
+			remainings[index].end = append([]byte(nil), mmap[newlineIndexFromEnd+1:]...)
+
 			chunk := mmap[newlineIndexFromStart+1 : newlineIndexFromEnd+1]
-			processChunk(chunk, cities)
-			chunkCitiesChan <- cities
-			mmap.Unmap()
-		}()
+			chunkCitiesChan <- processChunk(chunk)
+		}(index)
 	}
 
 	group.Wait()
-	// all processing is done, close chan and process remaining chunks
 	close(chunkCitiesChan)
-	processChunk(tmpRows, cities)
+
+	remainingsBytes := make([]byte, 64*1024)
+	for _, remaining := range remainings {
+		remainingsBytes = append(remainingsBytes, remaining.start...)
+		remainingsBytes = append(remainingsBytes, remaining.end...)
+	}
+	for k, v := range *processChunk(remainingsBytes) {
+		cities.SetCity(k, v.Sum, v.Count, v.Min, v.Max)
+	}
 
 	for _, v := range *cities {
 		fmt.Println(v.Name, "Sum:", v.Sum, "Count:", v.Count, "Min:", v.Min, "Max:", v.Max)
@@ -148,7 +148,8 @@ func (m MMap) Unmap() error {
 	return syscall.Munmap(m)
 }
 
-func processChunk(chunk []byte, cities *Cities) {
+func processChunk(chunk []byte) *Cities {
+	cities := NewCities(1000)
 	var pointer int
 	for pointer < len(chunk) {
 
@@ -161,6 +162,7 @@ func processChunk(chunk []byte, cities *Cities) {
 		temp := fastParseUint(string(temperature))
 		cities.SetCity(string(city), temp, 1, temp, temp)
 	}
+	return cities
 }
 
 func nextline(data []byte, pointer int) (startIndex, semiIndex, newlineIndex int) {
