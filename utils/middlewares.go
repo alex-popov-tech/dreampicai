@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 
@@ -23,7 +22,7 @@ func WithUser(handler http.Handler) http.Handler {
 		atCookie, err := r.Cookie("at")
 		// if there is no access token cookie, user is logged out
 		if err != nil {
-			slog.Info("WithUser", "Cannot get 'at' cookie", err)
+			slog.Info("[WithUser] parse access token", "err", err)
 			handler.ServeHTTP(w, requestWithEmptyUserContext)
 			return
 		}
@@ -31,10 +30,10 @@ func WithUser(handler http.Handler) http.Handler {
 		authUser, err := ParseSupabaseToken(atCookie.Value)
 		if err == nil {
 			slog.Info(
-				"WithUser, parsed access token",
-				"User id",
+				"[WithUser] parsed access token",
+				"user.id",
 				authUser.ID,
-				"User email",
+				"user.email",
 				authUser.Email,
 			)
 			// jwt successfully parsed and active, just put data to context
@@ -54,7 +53,7 @@ func WithUser(handler http.Handler) http.Handler {
 		// if something is wrong with access token, try to refresh it
 		rtCookie, err := r.Cookie("rt")
 		if err != nil {
-			slog.Info("WithUser, parsing refresh token", "error", err)
+			slog.Info("[WithUser] parsing refresh token", "err", err)
 			handler.ServeHTTP(w, requestWithEmptyUserContext)
 			return
 		}
@@ -65,14 +64,14 @@ func WithUser(handler http.Handler) http.Handler {
 		)
 		if err != nil {
 			// all of this is fucked up, just clean cookies and go home
-			slog.Info("WithUser, refreshing token", "error", err)
+			slog.Info("[WithUser] refreshing token", "err", err)
 			CleanAllCookies(w, r)
 			handler.ServeHTTP(w, requestWithEmptyUserContext)
 			return
 		}
 
 		slog.Info(
-			"WithUser, token refreshed",
+			"[WithUser] token refreshed",
 			"at",
 			authDetails.AccessToken,
 			"rt",
@@ -116,7 +115,7 @@ func WithAccount(handler http.Handler) http.Handler {
 		}
 		bytes, err := ToUUIDBytes(user.ID)
 		if err != nil {
-			log.Printf("WithAccount: user.ID cannot be converted to UUID bytes - %v\n", err)
+			slog.Info("[WithAccount] converting user.id to uuid bytes", "err", err)
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -127,7 +126,7 @@ func WithAccount(handler http.Handler) http.Handler {
 			pgtype.UUID{Bytes: bytes, Valid: true},
 		)
 		if err != nil {
-			log.Printf("WithAccount: cannot find account for user.ID '%s' - %v\n", user.ID, err)
+			slog.Info("[WithAccount] getting account by user.id", "err", err)
 			handler.ServeHTTP(w, r)
 			return
 		}
