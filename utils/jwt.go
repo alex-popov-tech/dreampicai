@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"dreampicai/model"
+	"dreampicai/domain"
 	"fmt"
 	"os"
 
@@ -10,7 +10,7 @@ import (
 
 var SIGNING_METHOD = jwt.SigningMethodHS256
 
-func ParseSupabaseToken(token string) (model.User, error) {
+func ParseSupabaseToken(token string) (domain.User, error) {
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
@@ -21,9 +21,9 @@ func ParseSupabaseToken(token string) (model.User, error) {
 		return []byte(os.Getenv("SUPABASE_JWT_SECRET")), nil
 	})
 	if err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
-	user := model.User{
+	user := domain.User{
 		ID:         (claims["sub"].(string)),
 		Email:      (claims["email"].(string)),
 		IsLoggedIn: true,

@@ -2,13 +2,13 @@ package view
 
 import (
 	"context"
-	"dreampicai/model"
+	"dreampicai/domain"
 )
 
-func GetUser(ctx context.Context) model.User {
-	user, ok := ctx.Value(model.UserContextKey).(model.User)
+func GetUser(ctx context.Context) domain.User {
+	user, ok := ctx.Value(domain.UserContextKey).(domain.User)
 	if !ok {
-		return model.User{}
+		return domain.User{}
 	}
 	return user
 }

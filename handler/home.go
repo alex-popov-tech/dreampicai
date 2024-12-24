@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"dreampicai/view/home"
 	"net/http"
+
+	"dreampicai/view"
 )
 
 func HomeView(w http.ResponseWriter, r *http.Request) error {
-	return home.Home().Render(r.Context(), w)
+	return view.Home().Render(r.Context(), w)
 }

@@ -1,0 +1,6 @@
+FROM golang:1.23-alpine
+
+RUN apk add --no-cache make git && \
+    go install github.com/air-verse/air@latest
+
+WORKDIR /app

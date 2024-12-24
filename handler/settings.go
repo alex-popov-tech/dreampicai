@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"dreampicai/view/settings"
 	"net/http"
+
+	"dreampicai/view"
 )
 
 func SettingsView(w http.ResponseWriter, r *http.Request) error {
-	return settings.Settings().Render(r.Context(), w)
+	return view.Settings().Render(r.Context(), w)
 }

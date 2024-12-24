@@ -1,0 +1,33 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+    environment:
+      - CGO_ENABLED=0
+    command: make live/server
+  templ:
+    build:
+      context: .
+      dockerfile: Dockerfile.tmpl
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+    command: templ generate -watch -proxy="http://server:3000" -proxybind="0.0.0.0" -proxyport=3001 -open-browser=false ./view
+  tailwind:
+    build:
+      context: .
+      dockerfile: Dockerfile.tailwind
+    volumes:
+      - .:/app
+    tty: true
+    command: npx tailwindcss -i ./view/index.css -o ./public/styles.css --watch
+volumes:
+  go-mod-cache:

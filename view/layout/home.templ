@@ -1,32 +1,47 @@
 package layout
 
-import "dreampicai/view"
+import (
+	"context"
+	"dreampicai/domain"
+)
+
+func GetAuth(ctx context.Context) domain.Auth {
+	auth, ok := ctx.Value(domain.AuthContextKey).(domain.Auth)
+	if !ok {
+		return domain.Auth{}
+	}
+	return auth
+}
 
 templ HomeLayout() {
 	@AppLayout() {
-		<div class="navbar bg-base-100">
-			<div class="flex-1">
-				<a class="btn btn-ghost text-xl" href="/">Dreampicai</a>
-			</div>
-			<div class="flex-none">
-				<ul class="menu menu-horizontal px-1">
-					if view.GetUser(ctx).IsLoggedIn {
-						<li>
-							<details>
-								<summary>{ view.GetUser(ctx).Email }</summary>
-								<ul class="bg-base-100 rounded-t-none p-2">
-									<li><a>Settings</a></li>
-									<li><a hx-delete="/signout">Sign Out</a></li>
-								</ul>
-							</details>
-						</li>
-					} else {
-						<li><a class="" href="/signin">Sign In</a></li>
-						<li><a class="" href="/signup">Sign Up</a></li>
-					}
-				</ul>
+		<div class="min-h-screen flex flex-col">
+			<header class="navbar bg-base-100">
+				<div class="flex-1">
+					<a class="btn btn-ghost text-xl" href="/">Dreampicai</a>
+				</div>
+				<div class="flex-none">
+					<ul class="menu menu-horizontal px-1">
+						if GetAuth(ctx).Email != "" {
+							<li>
+								<details>
+									<summary>{ GetAuth(ctx).Email }</summary>
+									<ul class="bg-base-100 rounded-t-none p-2">
+										<li><a>Settings</a></li>
+										<li><a hx-delete="/signout">Sign Out</a></li>
+									</ul>
+								</details>
+							</li>
+						} else {
+							<li><a class="" href="/signin">Sign In</a></li>
+							<li><a class="" href="/signup">Sign Up</a></li>
+						}
+					</ul>
+				</div>
+			</header>
+			<div class="flex-1 flex overflow-auto">
+				{ children... }
 			</div>
 		</div>
-		{ children... }
 	}
 }

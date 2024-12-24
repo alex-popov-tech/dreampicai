@@ -2,11 +2,13 @@ package handler
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"os"
+
 	"dreampicai/pkg/supabase"
 	"dreampicai/utils"
 	"dreampicai/view/auth"
-	"net/http"
-	"os"
 )
 
 func SigninView(w http.ResponseWriter, r *http.Request) error {
@@ -19,6 +21,7 @@ func Signin(w http.ResponseWriter, r *http.Request) error {
 	redirect := r.FormValue("redirect")
 	emailErrors := utils.ValidateEmail(email)
 	passwordErrors := utils.ValidatePassword(password)
+	fmt.Sprintf("hello mom! %s", "hello mom")
 
 	loginData := auth.SigninData{Email: email, Password: password}
 	loginErrors := auth.SigninErrors{Email: emailErrors, Password: passwordErrors}
@@ -27,30 +30,16 @@ func Signin(w http.ResponseWriter, r *http.Request) error {
 		return auth.SigninForm(loginData, loginErrors, redirect).Render(r.Context(), w)
 	}
 
-	authDetails, err := supabase.Client.Auth.SignIn(context.Background(), supabase.UserCredentials{Email: email, Password: password})
-
+	authDetails, err := supabase.Client.Auth.SignIn(
+		context.Background(),
+		supabase.UserCredentials{Email: email, Password: password},
+	)
 	if err != nil {
 		loginErrors.Others = []error{err}
 		return auth.SigninForm(loginData, loginErrors, redirect).Render(r.Context(), w)
 	}
 
-	atCookie := http.Cookie{
-		Name:     "at",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		Value:    authDetails.AccessToken,
-	}
-	rtCookie := http.Cookie{
-		Name:     "rt",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		Value:    authDetails.RefreshToken,
-	}
-	http.SetCookie(w, &atCookie)
-	http.SetCookie(w, &rtCookie)
-
+	utils.AddAuthCookies(w, authDetails.AccessToken, authDetails.RefreshToken)
 	if redirect != "" {
 		w.Header().Add("HX-Redirect", redirect)
 	} else {

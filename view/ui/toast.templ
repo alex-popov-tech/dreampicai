@@ -1,0 +1,15 @@
+package ui
+
+templ Toast(message, status string) {
+	<div class="toast toast-top toast-end animate-[fadeOut_1s_ease_3s_forwards]">
+		<div
+			class={ "alert",
+      status,
+      templ.KV("alert-error", status == "error"),
+      templ.KV("alert-info", status == "info"),
+      templ.KV("alert-success", status == "success") }
+		>
+			<span>{ message }</span>
+		</div>
+	</div>
+}

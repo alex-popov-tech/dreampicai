@@ -1,9 +1,10 @@
 package handler
 
 import (
+	"net/http"
+
 	"dreampicai/utils"
 	"dreampicai/view/auth"
-	"net/http"
 )
 
 func AuthCallback(w http.ResponseWriter, r *http.Request) error {
@@ -20,21 +21,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "at",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		Value:    accessToken,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "rt",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		Value:    refreshToken,
-	})
-
+	utils.AddAuthCookies(w, accessToken, refreshToken)
 	http.Redirect(w, r, "/", http.StatusFound)
 	return nil
 }

@@ -1,9 +1,6 @@
 package main
 
 import (
-	"dreampicai/handler"
-	"dreampicai/pkg/supabase"
-	"dreampicai/utils"
 	"embed"
 	"fmt"
 	"log"
@@ -12,6 +9,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	"dreampicai/handler"
+	"dreampicai/pkg/db"
+	"dreampicai/pkg/supabase"
+	"dreampicai/utils"
 )
 
 //go:embed public
@@ -24,6 +26,7 @@ func initialize() error {
 	}
 
 	supabase.InitClient(env.SupabaseProjectURL, env.SupabaseServiceSecretKey)
+	db.InitClient(env.DatabaseDirectURL)
 
 	return nil
 }
@@ -32,10 +35,10 @@ func main() {
 	if err := initialize(); err != nil {
 		log.Fatal(err)
 	}
-
 	mux := chi.NewRouter()
+
 	mux.Use(middleware.Logger)
-	mux.Use(utils.UserAuthMiddleware)
+	mux.Use(utils.WithUser)
 
 	mux.Handle("/*", http.StripPrefix("/public/", http.FileServerFS(os.DirFS("public"))))
 	mux.Handle("GET /", utils.MakeRoute(handler.HomeView))
@@ -51,10 +54,12 @@ func main() {
 	mux.Handle("/auth/callback", utils.MakeRoute(handler.AuthCallback))
 
 	mux.Group(func(nested chi.Router) {
-		nested.Use(utils.AuthProtectedMiddleware)
+		nested.Use(utils.UserProtected)
 		nested.Handle("GET /settings", utils.MakeRoute(handler.SettingsView))
 	})
+	mux.Handle("GET /generate", utils.MakeRoute(handler.GenerateView))
 
+	fmt.Println("Listening on port", os.Getenv("PORT"))
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), mux); err != nil {
 		log.Fatal("oops", err)
 	}

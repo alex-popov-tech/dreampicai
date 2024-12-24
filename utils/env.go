@@ -9,13 +9,15 @@ import (
 )
 
 type Env struct {
-	Port                     uint   `env:"PORT" validate:"required,min=1024,max=65535"`
-	DatabaseURL              string `env:"DATABASE_URL" validate:"required,url"`
-	SupabaseProjectURL       string `env:"SUPABASE_PROJECT_URL" validate:"required,url"`
-	SupabasePublicKey        string `env:"SUPABASE_PUBLIC_KEY" validate:"required"`
+	Port                     uint   `env:"PORT"                        validate:"required,min=1024,max=65535"`
+	DatabaseDirectURL        string `env:"DATABASE_DIRECT_URL"         validate:"required,url"`
+	DatabasePoolURL          string `env:"DATABASE_POOL_URL"           validate:"required,url"`
+	DatabaseMigrations       string `env:"DATABASE_MIGRATIONS"         validate:"required"`
+	SupabaseProjectURL       string `env:"SUPABASE_PROJECT_URL"        validate:"required,url"`
+	SupabasePublicKey        string `env:"SUPABASE_PUBLIC_KEY"         validate:"required"`
 	SupabaseServiceSecretKey string `env:"SUPABASE_SERVICE_SECRET_KEY" validate:"required"`
-	SupabaseJWTSecret        string `env:"SUPABASE_JWT_SECRET" validate:"required"`
-	GithubAuthRedirect       string `env:"GITHUB_AUTH_REDIRECT" validate:"required,url"`
+	SupabaseJWTSecret        string `env:"SUPABASE_JWT_SECRET"         validate:"required"`
+	GithubAuthRedirect       string `env:"GITHUB_AUTH_REDIRECT"        validate:"required,url"`
 }
 
 func ValidateEnv() (Env, error) {

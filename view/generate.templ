@@ -1,0 +1,51 @@
+package view
+
+import (
+	"dreampicai/view/layout"
+	"dreampicai/domain"
+)
+
+type GenerateData struct {
+	Images []domain.Image
+}
+
+type ResetPasswordData struct {
+	Email string
+}
+
+templ Generate(data GenerateData) {
+	@layout.HomeLayout() {
+		<div class="flex-1 flex gap-4">
+			<div class="w-1/3 max-w-96 flex flex-col items-center">
+				@Sidebar()
+			</div>
+			<div class="h-fit flex gap-4 flex-wrap p-4">
+				for _, it := range data.Images {
+					@Card(it)
+				}
+			</div>
+		</div>
+	}
+}
+
+templ Sidebar() {
+	<button type="submit" class="btn btn-secondary btn-outline btn-wide">Generate <i class="fa-solid fa-arrow-right"></i></button>
+}
+
+templ Card(image domain.Image) {
+	<div
+		class={ templ.KV("skeleton", image.Status == domain.ImageStatusPending),
+    "w-56 h-72 bg-black opacity-30 rounded-lg shadow-lg shadow-gray-700" }
+	>
+		if image.Status == domain.ImageStatusFailed {
+			<div class="flex justify-center items-center h-full w-full">
+				<i class="fa-solid fa-skull w-1/2 h-1/2"></i>
+			</div>
+		}
+		if image.Status == domain.ImageStatusPending {
+			<div class="flex justify-center items-center h-full w-full">
+				<i class="fa-solid animate-[spin_2s_linear_infinite] fa-gear w-1/2 h-1/2"></i>
+			</div>
+		}
+	</div>
+}

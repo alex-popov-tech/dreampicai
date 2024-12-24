@@ -25,12 +25,18 @@ templ Signup() {
 }
 
 templ SignupForm(data SignupData, errors SignupErrors) {
-	<form hx-trigger="submit" hx-post="/signup" hx-swap="outerHTML" class="flex flex-col">
+	<style>
+    form.htmx-request {
+      filter: blur(2px);
+      cursor: wait;
+    }
+  </style>
+	<form hx-trigger="submit" hx-post="/signup" hx-swap="outerHTML" hx-disabled-elt="input,.btn" hx-indicator="form" class="flex flex-col">
 		<label class="form-control w-full max-w-md">
 			<div class="label">
 				<span class="label-text text-xl">Email</span>
 			</div>
-			<input value={ data.Email } type="email" name="email" required autocomplete="off" placeholder="chris@gmail.com" class={ "input input-bordered w-full max-w-md focus:outline-none", templ.KV("border-error", len(errors.Email) > 0) }/>
+			<input value={ data.Email } id="email" type="email" name="email" required autocomplete="off" placeholder="chris@gmail.com" class={ "input input-bordered w-full max-w-md focus:outline-none", templ.KV("border-error", len(errors.Email) > 0) }/>
 			<div class="label">
 				for _, it := range errors.Email {
 					<span class="label-text-alt text-error">{ it.Error() }</span>
