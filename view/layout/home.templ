@@ -1,17 +1,8 @@
 package layout
 
 import (
-	"context"
-	"dreampicai/domain"
+	"dreampicai/view/utils"
 )
-
-func GetAuth(ctx context.Context) domain.Auth {
-	auth, ok := ctx.Value(domain.AuthContextKey).(domain.Auth)
-	if !ok {
-		return domain.Auth{}
-	}
-	return auth
-}
 
 templ HomeLayout() {
 	@AppLayout() {
@@ -22,10 +13,10 @@ templ HomeLayout() {
 				</div>
 				<div class="flex-none">
 					<ul class="menu menu-horizontal px-1">
-						if GetAuth(ctx).Email != "" {
+						if utils.GetAccount(ctx).Email != "" {
 							<li>
 								<details>
-									<summary>{ GetAuth(ctx).Email }</summary>
+									<summary>{ utils.GetAccount(ctx).Email }</summary>
 									<ul class="bg-base-100 rounded-t-none p-2">
 										<li><a>Settings</a></li>
 										<li><a hx-delete="/signout">Sign Out</a></li>

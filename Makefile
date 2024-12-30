@@ -17,7 +17,11 @@ build-sqlc:
 	@echo '--------------------------------------'
 
 live:
-	make -j4 live/templ live/tailwind live/server
+	make -j5 live/templ live/tailwind live/server live/sqlc
+live/sqlc:
+	@echo '--------------------------------------'
+	npx nodemon --watch ./data --ext 'sql' --exec 'sqlc generate'
+	@echo '--------------------------------------'
 live/templ:
 	@echo '--------------------------------------'
 	templ generate -watch -proxy="http://localhost:3000" -proxyport=3001 -open-browser=false ./view

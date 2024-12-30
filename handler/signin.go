@@ -2,10 +2,13 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"dreampicai/pkg/db"
 	"dreampicai/pkg/supabase"
 	"dreampicai/utils"
 	"dreampicai/view/auth"
@@ -21,7 +24,6 @@ func Signin(w http.ResponseWriter, r *http.Request) error {
 	redirect := r.FormValue("redirect")
 	emailErrors := utils.ValidateEmail(email)
 	passwordErrors := utils.ValidatePassword(password)
-	fmt.Sprintf("hello mom! %s", "hello mom")
 
 	loginData := auth.SigninData{Email: email, Password: password}
 	loginErrors := auth.SigninErrors{Email: emailErrors, Password: passwordErrors}
@@ -39,7 +41,28 @@ func Signin(w http.ResponseWriter, r *http.Request) error {
 		return auth.SigninForm(loginData, loginErrors, redirect).Render(r.Context(), w)
 	}
 
-	utils.AddAuthCookies(w, authDetails.AccessToken, authDetails.RefreshToken)
+	uuidBytes, err := utils.ToUUIDBytes(authDetails.User.ID)
+	if err != nil {
+		loginErrors.Others = []error{err}
+		return auth.SigninForm(loginData, loginErrors, redirect).Render(r.Context(), w)
+	}
+
+	account, err := db.Client.AccountGetByUserId(r.Context(), pgtype.UUID{
+		Bytes: uuidBytes,
+		Valid: true,
+	})
+	if err != nil {
+		loginErrors.Others = []error{err}
+		return auth.SigninForm(loginData, loginErrors, redirect).Render(r.Context(), w)
+	}
+
+	utils.AddUserAuthCookies(
+		w,
+		authDetails.AccessToken,
+		authDetails.RefreshToken,
+		strconv.Itoa(int(account.ID)),
+	)
+
 	if redirect != "" {
 		w.Header().Add("HX-Redirect", redirect)
 	} else {

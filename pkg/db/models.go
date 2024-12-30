@@ -15,7 +15,7 @@ type ImageStatus string
 
 const (
 	ImageStatusPending   ImageStatus = "pending"
-	ImageStatusFailde    ImageStatus = "failde"
+	ImageStatusFailed    ImageStatus = "failed"
 	ImageStatusSucceeded ImageStatus = "succeeded"
 )
 
@@ -56,13 +56,15 @@ func (ns NullImageStatus) Value() (driver.Value, error) {
 
 type Account struct {
 	ID       int32
-	Userid   pgtype.UUID
+	UserID   pgtype.UUID
 	Username string
 }
 
 type Image struct {
-	ID     int32
-	Status ImageStatus
-	Name   string
-	Url    string
+	ID        int32
+	OwnerID   pgtype.Int4
+	Status    ImageStatus
+	Prompt    string
+	Url       pgtype.Text
+	CreatedAt pgtype.Timestamptz
 }

@@ -1,16 +1,18 @@
 package utils
 
 import (
-	"dreampicai/domain"
+	"errors"
 	"fmt"
 	"os"
 
 	jwt "github.com/golang-jwt/jwt/v5"
+
+	"dreampicai/pkg/supabase"
 )
 
 var SIGNING_METHOD = jwt.SigningMethodHS256
 
-func ParseSupabaseToken(token string) (domain.User, error) {
+func ParseSupabaseToken(token string) (*supabase.SupabaseAuth, error) {
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
@@ -21,12 +23,17 @@ func ParseSupabaseToken(token string) (domain.User, error) {
 		return []byte(os.Getenv("SUPABASE_JWT_SECRET")), nil
 	})
 	if err != nil {
-		return domain.User{}, err
+		return nil, err
 	}
-	user := domain.User{
-		ID:         (claims["sub"].(string)),
-		Email:      (claims["email"].(string)),
-		IsLoggedIn: true,
+
+	appMetadata, ok := claims["app_metadata"].(map[string]interface{})
+	if !ok {
+		return nil, errors.New("Can't find 'app_metadata' in supabase token")
 	}
-	return user, nil
+
+	return &supabase.SupabaseAuth{
+		ID:       (claims["sub"].(string)),
+		Email:    (claims["email"].(string)),
+		Provider: (appMetadata["provider"].(string)),
+	}, nil
 }

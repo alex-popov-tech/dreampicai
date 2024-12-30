@@ -13,28 +13,28 @@ import (
 
 const accountCreate = `-- name: AccountCreate :one
 insert into
-  accounts (userid, username)
+  accounts (user_id, username)
 values
   ($1, $2)
 returning
-  id, userid, username
+  id, user_id, username
 `
 
 type AccountCreateParams struct {
-	Userid   pgtype.UUID
+	UserID   pgtype.UUID
 	Username string
 }
 
 func (q *Queries) AccountCreate(ctx context.Context, arg AccountCreateParams) (Account, error) {
-	row := q.db.QueryRow(ctx, accountCreate, arg.Userid, arg.Username)
+	row := q.db.QueryRow(ctx, accountCreate, arg.UserID, arg.Username)
 	var i Account
-	err := row.Scan(&i.ID, &i.Userid, &i.Username)
+	err := row.Scan(&i.ID, &i.UserID, &i.Username)
 	return i, err
 }
 
 const accountGet = `-- name: AccountGet :one
 select
-  id, userid, username
+  id, user_id, username
 from
   accounts
 where
@@ -44,23 +44,23 @@ where
 func (q *Queries) AccountGet(ctx context.Context, id int32) (Account, error) {
 	row := q.db.QueryRow(ctx, accountGet, id)
 	var i Account
-	err := row.Scan(&i.ID, &i.Userid, &i.Username)
+	err := row.Scan(&i.ID, &i.UserID, &i.Username)
 	return i, err
 }
 
 const accountGetByUserId = `-- name: AccountGetByUserId :one
 select
-  id, userid, username
+  id, user_id, username
 from
   accounts
 where
-  userid = $1
+  user_id = $1
 `
 
-func (q *Queries) AccountGetByUserId(ctx context.Context, userid pgtype.UUID) (Account, error) {
-	row := q.db.QueryRow(ctx, accountGetByUserId, userid)
+func (q *Queries) AccountGetByUserId(ctx context.Context, userID pgtype.UUID) (Account, error) {
+	row := q.db.QueryRow(ctx, accountGetByUserId, userID)
 	var i Account
-	err := row.Scan(&i.ID, &i.Userid, &i.Username)
+	err := row.Scan(&i.ID, &i.UserID, &i.Username)
 	return i, err
 }
 
@@ -71,7 +71,7 @@ set
 where
   id = $2
 returning
-  id, userid, username
+  id, user_id, username
 `
 
 type AccountUpdateUsernameParams struct {
@@ -82,13 +82,13 @@ type AccountUpdateUsernameParams struct {
 func (q *Queries) AccountUpdateUsername(ctx context.Context, arg AccountUpdateUsernameParams) (Account, error) {
 	row := q.db.QueryRow(ctx, accountUpdateUsername, arg.Username, arg.ID)
 	var i Account
-	err := row.Scan(&i.ID, &i.Userid, &i.Username)
+	err := row.Scan(&i.ID, &i.UserID, &i.Username)
 	return i, err
 }
 
 const accountsList = `-- name: AccountsList :many
 select
-  id, userid, username
+  id, user_id, username
 from
   accounts
 `
@@ -102,7 +102,7 @@ func (q *Queries) AccountsList(ctx context.Context) ([]Account, error) {
 	var items []Account
 	for rows.Next() {
 		var i Account
-		if err := rows.Scan(&i.ID, &i.Userid, &i.Username); err != nil {
+		if err := rows.Scan(&i.ID, &i.UserID, &i.Username); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

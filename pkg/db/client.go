@@ -2,10 +2,11 @@ package db
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5"
 	"log/slog"
 	"os"
 	"os/signal"
+
+	"github.com/jackc/pgx/v5"
 )
 
 var Client *Queries
@@ -20,6 +21,10 @@ func InitClient(databaseUrl string) (*pgx.Conn, error) {
 	config.Tracer = &LoggingQueryTracer{logger: slog.Default()}
 	config.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
 	conn, err := pgx.ConnectConfig(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Ping(ctx)
 	if err != nil {
 		return nil, err
 	}

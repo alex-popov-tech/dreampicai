@@ -4,8 +4,17 @@ import (
 	s "github.com/nedpals/supabase-go"
 )
 
-type UserCredentials = s.UserCredentials
-type ProviderSignInOptions = s.ProviderSignInOptions
+type (
+	UserCredentials       = s.UserCredentials
+	AuthenticatedDetails  = s.AuthenticatedDetails
+	ProviderSignInOptions = s.ProviderSignInOptions
+)
+
+type SupabaseAuth struct {
+	ID       string
+	Email    string
+	Provider string
+}
 
 var Client *s.Client
 

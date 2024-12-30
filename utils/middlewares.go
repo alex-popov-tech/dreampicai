@@ -5,89 +5,112 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"strconv"
 
 	"dreampicai/domain"
 	"dreampicai/pkg/db"
 	"dreampicai/pkg/supabase"
 )
 
+func serverRequestWithNoAccount(w http.ResponseWriter, r *http.Request, handler http.Handler) {
+	requestWithEmptyUserContext := r.WithContext(
+		context.WithValue(r.Context(), domain.AccountContextKey, domain.Account{}),
+	)
+	handler.ServeHTTP(w, requestWithEmptyUserContext)
+}
+
+func getUserAuthFromTokens(accessToken, refreshToken string) (*domain.UserAuth, error) {
+	userAuth := &domain.UserAuth{AccessToken: accessToken, RefreshToken: refreshToken}
+	supabaseAuth, err := ParseSupabaseToken(accessToken)
+	if err == nil {
+		userAuth.ID = supabaseAuth.ID
+		userAuth.Email = supabaseAuth.Email
+		userAuth.Provider = supabaseAuth.Provider
+		return userAuth, nil
+	}
+	if err.Error() != "token is expired" {
+		return nil, err
+	}
+
+	authDetails, err := supabase.Client.Auth.RefreshUser(
+		context.Background(),
+		accessToken,
+		refreshToken,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	supabaseAuth, err = ParseSupabaseToken(authDetails.AccessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.UserAuth{
+		ID:           supabaseAuth.ID,
+		Email:        supabaseAuth.Email,
+		Provider:     supabaseAuth.Provider,
+		AccessToken:  authDetails.AccessToken,
+		RefreshToken: authDetails.RefreshToken,
+	}, nil
+}
+
 func WithUser(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestWithEmptyUserContext := r.WithContext(
-			context.WithValue(r.Context(), domain.AuthContextKey, domain.Auth{}),
-		)
-
-		atCookie, err := r.Cookie("at")
-		// if there is no access token cookie, user is logged out
-		if err != nil {
-			slog.Info("[WithUser] parse access token", "err", err)
-			handler.ServeHTTP(w, requestWithEmptyUserContext)
-			return
-		}
-
-		authUser, err := ParseSupabaseToken(atCookie.Value)
-		if err == nil {
+		atCookie, _ := r.Cookie(domain.AccessTokenCookieKey)
+		rtCookie, _ := r.Cookie(domain.RefreshTokenCookieKey)
+		accountIdCookie, _ := r.Cookie(domain.AccountIdCookieKey)
+		if atCookie == nil || rtCookie == nil || accountIdCookie == nil {
 			slog.Info(
-				"[WithUser] parsed access token",
-				"user.id",
-				authUser.ID,
-				"user.email",
-				authUser.Email,
+				"[WithUser] missing required cookie",
+				"at",
+				atCookie,
+				"rt",
+				rtCookie,
+				"accountId",
+				accountIdCookie,
 			)
-			// jwt successfully parsed and active, just put data to context
-			handler.ServeHTTP(
-				w,
-				r.WithContext(
-					context.WithValue(
-						r.Context(),
-						domain.AuthContextKey,
-						domain.Auth{ID: authUser.ID, Email: authUser.Email, IsInit: true},
-					),
-				),
-			)
+			serverRequestWithNoAccount(w, r, handler)
 			return
 		}
 
-		// if something is wrong with access token, try to refresh it
-		rtCookie, err := r.Cookie("rt")
+		// if there is no access token cookie, user is logged out
+		userAuth, err := getUserAuthFromTokens(atCookie.Value, rtCookie.Value)
 		if err != nil {
-			slog.Info("[WithUser] parsing refresh token", "err", err)
-			handler.ServeHTTP(w, requestWithEmptyUserContext)
-			return
-		}
-		authDetails, err := supabase.Client.Auth.RefreshUser(
-			r.Context(),
-			atCookie.Value,
-			rtCookie.Value,
-		)
-		if err != nil {
-			// all of this is fucked up, just clean cookies and go home
-			slog.Info("[WithUser] refreshing token", "err", err)
+			slog.Info("[WithUser] parsing/refreshing tokens", "err", err)
 			CleanAllCookies(w, r)
-			handler.ServeHTTP(w, requestWithEmptyUserContext)
+			serverRequestWithNoAccount(w, r, handler)
 			return
 		}
 
-		slog.Info(
-			"[WithUser] token refreshed",
-			"at",
-			authDetails.AccessToken,
-			"rt",
-			authDetails.RefreshToken,
-		)
-		AddAuthCookies(w, authDetails.AccessToken, authDetails.RefreshToken)
+		accountId, err := strconv.Atoi(accountIdCookie.Value)
+		if err != nil {
+			slog.Info("[WithUser] parsing account id", "err", err)
+			serverRequestWithNoAccount(w, r, handler)
+			return
+		}
+
+		account, err := db.Client.AccountGet(r.Context(), int32(accountId))
+		if err != nil {
+			slog.Info("[WithUser] getting account from db", "err", err)
+			serverRequestWithNoAccount(w, r, handler)
+			return
+		}
+
+		slog.Info("[WithUser] user authenticated", "id", userAuth.ID, "email", userAuth.Email)
+
+		AddUserAuthCookies(w, userAuth.AccessToken, userAuth.RefreshToken, accountIdCookie.Value)
+
 		handler.ServeHTTP(
 			w,
 			r.WithContext(
 				context.WithValue(
 					r.Context(),
-					domain.AuthContextKey,
-					domain.Auth{
-						Email:  authDetails.User.Email,
-						ID:     authDetails.User.ID,
-						IsInit: true,
+					domain.AccountContextKey,
+					domain.Account{
+						ID:       account.ID,
+						Email:    userAuth.Email,
+						UserAuth: *userAuth,
 					},
 				),
 			),
@@ -95,45 +118,12 @@ func WithUser(handler http.Handler) http.Handler {
 	})
 }
 
-func UserProtected(handler http.Handler) http.Handler {
+func Protected(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := r.Context().Value(domain.AuthContextKey).(domain.Auth); ok {
+		if _, ok := r.Context().Value(domain.AccountContextKey).(domain.Account); ok {
 			handler.ServeHTTP(w, r)
 			return
 		}
 		http.Redirect(w, r, fmt.Sprintf("/signin?redirect=%s", r.URL.Path), http.StatusFound)
-	})
-}
-
-func WithAccount(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// if there is no user, return
-		user, ok := r.Context().Value(domain.AuthContextKey).(domain.Auth)
-		if !ok {
-			handler.ServeHTTP(w, r)
-			return
-		}
-		bytes, err := ToUUIDBytes(user.ID)
-		if err != nil {
-			slog.Info("[WithAccount] converting user.id to uuid bytes", "err", err)
-			handler.ServeHTTP(w, r)
-			return
-		}
-
-		// if user is there, grab account from db and put into context
-		acc, err := db.Client.AccountGetByUserId(
-			r.Context(),
-			pgtype.UUID{Bytes: bytes, Valid: true},
-		)
-		if err != nil {
-			slog.Info("[WithAccount] getting account by user.id", "err", err)
-			handler.ServeHTTP(w, r)
-			return
-		}
-
-		handler.ServeHTTP(
-			w,
-			r.WithContext(context.WithValue(r.Context(), domain.AccountContextKey, acc)),
-		)
 	})
 }

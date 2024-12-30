@@ -18,11 +18,11 @@ select
 from
   accounts
 where
-  userid = $1;
+  user_id = $1;
 
 -- name: AccountCreate :one
 insert into
-  accounts (userid, username)
+  accounts (user_id, username)
 values
   ($1, $2)
 returning

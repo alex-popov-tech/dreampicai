@@ -26,7 +26,10 @@ func initialize() error {
 	}
 
 	supabase.InitClient(env.SupabaseProjectURL, env.SupabaseServiceSecretKey)
-	db.InitClient(env.DatabaseDirectURL)
+	_, err = db.InitClient(env.DatabasePoolURL)
+	if err != nil {
+		return fmt.Errorf("Error loading environment variables \n%v\n", err)
+	}
 
 	return nil
 }
@@ -38,10 +41,8 @@ func main() {
 	mux := chi.NewRouter()
 
 	mux.Use(middleware.Logger)
-	mux.Use(utils.WithUser)
 
 	mux.Handle("/*", http.StripPrefix("/public/", http.FileServerFS(os.DirFS("public"))))
-	mux.Handle("GET /", utils.MakeRoute(handler.HomeView))
 
 	mux.Handle("GET /signin", utils.MakeRoute(handler.SigninView))
 	mux.Handle("POST /signin", utils.MakeRoute(handler.Signin))
@@ -53,11 +54,18 @@ func main() {
 	mux.Handle("DELETE /signout", utils.MakeRoute(handler.Signout))
 	mux.Handle("/auth/callback", utils.MakeRoute(handler.AuthCallback))
 
-	mux.Group(func(nested chi.Router) {
-		nested.Use(utils.UserProtected)
-		nested.Handle("GET /settings", utils.MakeRoute(handler.SettingsView))
+	mux.Group(func(mux chi.Router) {
+		mux.Use(utils.WithUser)
+		mux.Handle("GET /", utils.MakeRoute(handler.HomeView))
+
+		mux.Group(func(nested chi.Router) {
+			nested.Use(utils.Protected)
+			nested.Handle("GET /settings", utils.MakeRoute(handler.SettingsView))
+		})
+		mux.Handle("GET /generate", utils.MakeRoute(handler.GenerateView))
+		mux.Handle("POST /generate", utils.MakeRoute(handler.Generate))
+		mux.Handle("GET /images/{id}", utils.MakeRoute(handler.GetImage))
 	})
-	mux.Handle("GET /generate", utils.MakeRoute(handler.GenerateView))
 
 	fmt.Println("Listening on port", os.Getenv("PORT"))
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), mux); err != nil {

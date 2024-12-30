@@ -6,22 +6,35 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"dreampicai/domain"
 )
 
-func AddAuthCookies(w http.ResponseWriter, accessToken, refreshToken string) {
+func GetAccountFromRequest(r *http.Request) domain.Account {
+	return r.Context().Value(domain.AccountContextKey).(domain.Account)
+}
+
+func AddUserAuthCookies(w http.ResponseWriter, accessToken, refreshToken, accountId string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "at",
+		Name:     domain.AccessTokenCookieKey,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
 		Value:    accessToken,
 	})
 	http.SetCookie(w, &http.Cookie{
-		Name:     "rt",
+		Name:     domain.RefreshTokenCookieKey,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
 		Value:    refreshToken,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     domain.AccountIdCookieKey,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		Value:    accountId,
 	})
 }
 
@@ -67,102 +80,7 @@ func MakeRoute(handler func(w http.ResponseWriter, r *http.Request) error) http.
 		if err != nil {
 			log.Printf("Handler unhanded error %s %s\nError: %v", r.Method, r.URL.Path, err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Sorry, something went wrong\n%v", err.Error())))
+			fmt.Fprintf(w, "Something went wrong: %v", err)
 		}
 	})
 }
-
-// func UserAuthMiddleware(handler http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		atCookie, err := r.Cookie("at")
-// 		at := atCookie.Value
-// 		rtCookie, err := r.Cookie("rt")
-// 		rt := rtCookie.Value
-// 		requestWithEmptyUserContext := r.WithContext(
-// 			context.WithValue(r.Context(), model.UserContextKey, model.User{}),
-// 		)
-// 		if err != nil {
-// 			log.Printf("UserAuthMiddleware, cookie not found: %v\n", err)
-// 			handler.ServeHTTP(w, requestWithEmptyUserContext)
-// 			return
-// 		}
-// 		if at == "" {
-// 			log.Printf("UserAuthMiddleware, access_token cookie is empty: %v\n", err)
-// 			handler.ServeHTTP(w, requestWithEmptyUserContext)
-// 			return
-// 		}
-// 		if rt == "" {
-// 			log.Printf("UserAuthMiddleware, refresh_token cookie is empty: %v\n", err)
-// 			handler.ServeHTTP(w, requestWithEmptyUserContext)
-// 			return
-// 		}
-// 		user, err := ParseSupabaseToken(at)
-// 		if errors.Is(err, jwt.ErrTokenExpired) {
-// 			authDetails, err := supabase.Client.Auth.RefreshUser(context.Background(), at, rt)
-// 			if err != nil {
-// 				log.Printf(
-// 					"UserAuthMiddleware, access_token is expired and cannot be refreshed: %v\n",
-// 					err,
-// 				)
-// 				handler.ServeHTTP(
-// 					w,
-// 					r.WithContext(context.WithValue(r.Context(), model.UserContextKey, user)),
-// 				)
-// 				return
-// 			}
-// 			atCookie := http.Cookie{
-// 				Name:     "at",
-// 				Path:     "/",
-// 				HttpOnly: true,
-// 				Secure:   true,
-// 				Value:    authDetails.AccessToken,
-// 			}
-// 			rtCookie := http.Cookie{
-// 				Name:     "rt",
-// 				Path:     "/",
-// 				HttpOnly: true,
-// 				Secure:   true,
-// 				Value:    authDetails.RefreshToken,
-// 			}
-// 			http.SetCookie(w, &atCookie)
-// 			http.SetCookie(w, &rtCookie)
-// 			handler.ServeHTTP(
-// 				w,
-// 				r.WithContext(
-// 					context.WithValue(
-// 						r.Context(),
-// 						model.UserContextKey,
-// 						model.User{
-// 							Email:      authDetails.User.Email,
-// 							ID:         authDetails.User.ID,
-// 							IsLoggedIn: true,
-// 						},
-// 					),
-// 				),
-// 			)
-// 			return
-// 		}
-// 		if err != nil {
-// 			log.Printf("UserAuthMiddleware, jwt parsing error: %v\n", err)
-// 			handler.ServeHTTP(
-// 				w,
-// 				r.WithContext(context.WithValue(r.Context(), model.UserContextKey, user)),
-// 			)
-// 			return
-// 		}
-// 		handler.ServeHTTP(
-// 			w,
-// 			r.WithContext(context.WithValue(r.Context(), model.UserContextKey, user)),
-// 		)
-// 	})
-// }
-//
-// func AuthProtectedMiddleware(handler http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		if user, ok := r.Context().Value(model.UserContextKey).(model.User); ok && user.IsLoggedIn {
-// 			handler.ServeHTTP(w, r)
-// 			return
-// 		}
-// 		http.Redirect(w, r, fmt.Sprintf("/signin?redirect=%s", r.URL.Path), http.StatusFound)
-// 	})
-// }
