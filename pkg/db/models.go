@@ -14,7 +14,8 @@ import (
 type ImageStatus string
 
 const (
-	ImageStatusPending   ImageStatus = "pending"
+	ImageStatusStarted   ImageStatus = "started"
+	ImageStatusCancelled ImageStatus = "cancelled"
 	ImageStatusFailed    ImageStatus = "failed"
 	ImageStatusSucceeded ImageStatus = "succeeded"
 )
@@ -61,10 +62,11 @@ type Account struct {
 }
 
 type Image struct {
-	ID        int32
-	OwnerID   pgtype.Int4
-	Status    ImageStatus
-	Prompt    string
-	Url       pgtype.Text
-	CreatedAt pgtype.Timestamptz
+	ID         int32
+	ProviderID string
+	OwnerID    pgtype.Int4
+	Status     ImageStatus
+	Prompt     string
+	Url        pgtype.Text
+	CreatedAt  pgtype.Timestamptz
 }

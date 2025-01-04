@@ -1,6 +1,7 @@
 package view
 
 import (
+	"fmt"
 	"dreampicai/view/layout"
 	"dreampicai/domain"
 )
@@ -16,10 +17,11 @@ type ResetPasswordData struct {
 templ Generate(data GenerateData) {
 	@layout.HomeLayout() {
 		<div class="flex-1 flex gap-4">
-			<div class="w-1/3 max-w-96 flex flex-col items-center">
+			<form hx-post="/generate" hx-target="#cards > *:nth-child(1)" hx-swap="beforebegin" class="w-1/3 max-w-96 flex flex-col items-center">
 				@Sidebar()
-			</div>
-			<div class="h-fit flex gap-4 flex-wrap p-4">
+			</form>
+			<div id="cards" class="h-fit flex gap-4 flex-wrap p-4">
+				<div></div>
 				for _, it := range data.Images {
 					@Card(it)
 				}
@@ -34,18 +36,24 @@ templ Sidebar() {
 
 templ Card(image domain.Image) {
 	<div
-		class={ templ.KV("skeleton", image.Status == domain.ImageStatusPending),
-    "w-56 h-72 bg-black opacity-30 rounded-lg shadow-lg shadow-gray-700" }
+		if image.Status == domain.ImageStatusStarted {
+			hx-get={ fmt.Sprintf("/images/%d", image.ID) }
+			hx-trigger="load delay:5000ms"
+			hx-target="this"
+			hx-swap="outerHTML"
+		}
+		class={ templ.KV("skeleton opacity-30", image.Status == domain.ImageStatusStarted), "w-56 h-72 bg-black rounded-lg" }
 	>
 		if image.Status == domain.ImageStatusFailed {
 			<div class="flex justify-center items-center h-full w-full">
 				<i class="fa-solid fa-skull w-1/2 h-1/2"></i>
 			</div>
-		}
-		if image.Status == domain.ImageStatusPending {
+		} else if image.Status == domain.ImageStatusStarted {
 			<div class="flex justify-center items-center h-full w-full">
 				<i class="fa-solid animate-[spin_2s_linear_infinite] fa-gear w-1/2 h-1/2"></i>
 			</div>
+		} else if image.Status == domain.ImageStatusSucceeded {
+			<img src={ image.Url } class="w-full h-full object-cover rounded-lg"/>
 		}
 	</div>
 }

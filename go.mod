@@ -29,7 +29,9 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/nedpals/postgrest-go v0.1.3 // indirect
+	github.com/replicate/replicate-go v0.26.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
+	github.com/vincent-petithory/dataurl v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/net v0.33.0 // indirect

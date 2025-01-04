@@ -12,6 +12,7 @@ import (
 
 	"dreampicai/handler"
 	"dreampicai/pkg/db"
+	"dreampicai/pkg/replicate"
 	"dreampicai/pkg/supabase"
 	"dreampicai/utils"
 )
@@ -28,7 +29,12 @@ func initialize() error {
 	supabase.InitClient(env.SupabaseProjectURL, env.SupabaseServiceSecretKey)
 	_, err = db.InitClient(env.DatabasePoolURL)
 	if err != nil {
-		return fmt.Errorf("Error loading environment variables \n%v\n", err)
+		return fmt.Errorf("Error creating database client \n%v\n", err)
+	}
+
+	_, err = replicate.InitClient(env.ReplicateToken)
+	if err != nil {
+		return fmt.Errorf("Error creating replicate client \n%v\n", err)
 	}
 
 	return nil
@@ -66,6 +72,7 @@ func main() {
 		mux.Handle("POST /generate", utils.MakeRoute(handler.Generate))
 		mux.Handle("GET /images/{id}", utils.MakeRoute(handler.GetImage))
 	})
+	mux.Handle("POST /webhook/replicate", utils.MakeRoute(handler.GeneratedWebhook))
 
 	fmt.Println("Listening on port", os.Getenv("PORT"))
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), mux); err != nil {
