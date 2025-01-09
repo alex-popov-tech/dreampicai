@@ -30,7 +30,6 @@ FROM alpine
 WORKDIR /app
 COPY --from=build-stage /app/main .
 COPY --from=css-stage /app/public ./public
-COPY --from=build-stage /app/.env .
 USER nonroot:nonroot
 EXPOSE 3000
 ENTRYPOINT ["/app/main"]
