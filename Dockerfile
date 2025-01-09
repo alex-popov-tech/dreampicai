@@ -14,7 +14,7 @@ RUN ["templ", "generate"]
 FROM node:20-alpine AS css-stage
 WORKDIR /app
 COPY --from=templ-stage /app .
-RUN npm install -g tailwindcss
+RUN npm install
 RUN npx tailwindcss -i ./view/index.css -o ./public/styles.css --minify
 
 # Build Go binary
