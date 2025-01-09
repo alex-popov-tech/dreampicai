@@ -18,7 +18,6 @@ import (
 
 func GetImage(w http.ResponseWriter, r *http.Request) error {
 	account := utils.GetAccountFromRequest(r)
-	fmt.Println(account)
 	idAsString := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idAsString, 10, 32)
 	if err != nil {

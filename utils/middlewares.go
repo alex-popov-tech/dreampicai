@@ -120,7 +120,8 @@ func WithUser(handler http.Handler) http.Handler {
 
 func Protected(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := r.Context().Value(domain.AccountContextKey).(domain.Account); ok {
+		if acc, ok := r.Context().Value(domain.AccountContextKey).(domain.Account); ok &&
+			acc.Email != "" {
 			handler.ServeHTTP(w, r)
 			return
 		}

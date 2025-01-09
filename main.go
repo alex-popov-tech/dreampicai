@@ -26,8 +26,9 @@ func initialize() error {
 		return fmt.Errorf("Error loading environment variables \n%v\n", err)
 	}
 
-	supabase.InitClient(env.SupabaseProjectURL, env.SupabaseServiceSecretKey)
-	_, err = db.InitClient(env.DatabasePoolURL)
+	_ = supabase.InitClient(env.SupabaseProjectURL, env.SupabaseServiceSecretKey)
+
+	_, err = db.InitClient(env.DatabaseDirectURL)
 	if err != nil {
 		return fmt.Errorf("Error creating database client \n%v\n", err)
 	}
@@ -64,14 +65,15 @@ func main() {
 		mux.Use(utils.WithUser)
 		mux.Handle("GET /", utils.MakeRoute(handler.HomeView))
 
-		mux.Group(func(nested chi.Router) {
-			nested.Use(utils.Protected)
-			nested.Handle("GET /settings", utils.MakeRoute(handler.SettingsView))
+		mux.Group(func(mux chi.Router) {
+			mux.Use(utils.Protected)
+			mux.Handle("GET /settings", utils.MakeRoute(handler.SettingsView))
 		})
 		mux.Handle("GET /generate", utils.MakeRoute(handler.GenerateView))
 		mux.Handle("POST /generate", utils.MakeRoute(handler.Generate))
 		mux.Handle("GET /images/{id}", utils.MakeRoute(handler.GetImage))
 	})
+
 	mux.Handle("POST /webhook/replicate", utils.MakeRoute(handler.GeneratedWebhook))
 
 	fmt.Println("Listening on port", os.Getenv("PORT"))

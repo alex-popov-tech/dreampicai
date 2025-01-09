@@ -21,9 +21,9 @@ where
 
 -- name: ImageCreate :one
 insert into
-  images (provider_id, owner_id, prompt, status)
+  images (provider_id, owner_id, prompt, negative_prompt, status, model)
 values
-  ($1, $2, $3, $4)
+  ($1, $2, $3, $4, $5, $6)
 returning
   *;
 

@@ -21,7 +21,6 @@ type Env struct {
 
 	GithubAuthRedirect string `env:"GITHUB_AUTH_REDIRECT" validate:"required,url"`
 
-	ReplicateModel   string `env:"REPLICATE_MODEL"   validate:"required"`
 	ReplicateSecret  string `env:"REPLICATE_SECRET"  validate:"required"`
 	ReplicateToken   string `env:"REPLICATE_TOKEN"   validate:"required"`
 	ReplicateWebhook string `env:"REPLICATE_WEBHOOK" validate:"required,url"`

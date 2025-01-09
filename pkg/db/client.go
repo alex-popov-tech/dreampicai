@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -39,6 +40,9 @@ func listenInterrupts(conn *pgx.Conn) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 	<-signals
-	conn.Close(context.Background())
+	err := conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 	os.Exit(0)
 }

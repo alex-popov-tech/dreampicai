@@ -6,22 +6,29 @@ import (
 	"dreampicai/domain"
 )
 
-type GenerateData struct {
-	Images []domain.Image
+type GenerateViewData struct {
+	Images           []domain.Image
+	GenerateFormData GenerateFormData
 }
 
-type ResetPasswordData struct {
-	Email string
+type SelectOption struct {
+	Text  string
+	Value domain.ReplicateModel
 }
 
-templ Generate(data GenerateData) {
+type GenerateFormData struct {
+	Models         []SelectOption
+	SelectedModel  SelectOption
+	Prompt         string
+	NegativePrompt string
+	Count          string
+}
+
+templ Generate(data GenerateViewData) {
 	@layout.HomeLayout() {
 		<div class="flex-1 flex gap-4">
-			<form hx-post="/generate" hx-target="#cards > *:nth-child(1)" hx-swap="beforebegin" class="w-1/3 max-w-96 flex flex-col items-center">
-				@Sidebar()
-			</form>
+			@GenerateForm(data.GenerateFormData)
 			<div id="cards" class="h-fit flex gap-4 flex-wrap p-4">
-				<div></div>
 				for _, it := range data.Images {
 					@Card(it)
 				}
@@ -30,8 +37,66 @@ templ Generate(data GenerateData) {
 	}
 }
 
-templ Sidebar() {
-	<button type="submit" class="btn btn-secondary btn-outline btn-wide">Generate <i class="fa-solid fa-arrow-right"></i></button>
+templ GenerateForm(data GenerateFormData) {
+	<form
+		class="w-1/3 max-w-96 flex flex-col items-center"
+		hx-post="/generate"
+		hx-swap="this"
+	>
+		<div class="flex flex-col gap-4 h-4/5">
+			<button type="submit" class="btn btn-secondary w-full text-xl">Generate <i class="fa-solid fa-arrow-right"></i></button>
+			<label class="form-control w-full max-w-xs">
+				<div class="label">
+					<span class="label-text">Pick the model</span>
+				</div>
+				<select name="model" class="select select-bordered select-primary">
+					for _, it := range data.Models {
+						<option
+							value={ it.Value }
+							if it == data.SelectedModel {
+								selected
+							}
+						>{ it.Text }</option>
+					}
+				</select>
+			</label>
+			<label class="form-control grow">
+				<div class="label">
+					<span class="label-text">Describe the portret you want to have</span>
+				</div>
+				<textarea minlength="10" name="prompt" class="textarea textarea-primary textarea-md h-full" placeholder="Prompt">{ data.Prompt }</textarea>
+			</label>
+			<label class="form-control">
+				<div class="label">
+					<span class="label-text">Describe what you do NOT want to have</span>
+				</div>
+				<textarea minlength="10" name="negative_prompt" class="textarea textarea-error" placeholder="Negative prompt">{ data.NegativePrompt }</textarea>
+			</label>
+			<label class="form-control">
+				<div class="label">
+					<span class="label-text">How much images do you want to generate</span>
+				</div>
+				<div class="join w-full flex">
+					@radio("1", "count", "1", data.Count == "1")
+					@radio("2", "count", "2", data.Count == "2")
+					@radio("4", "count", "4", data.Count == "4")
+				</div>
+			</label>
+		</div>
+	</form>
+}
+
+templ radio(label, name, value string, selected bool) {
+	<input
+		class="join-item btn grow"
+		type="radio"
+		name={ name }
+		value={ value }
+		if selected {
+			checked="checked"
+		}
+		aria-label={ label }
+	/>
 }
 
 templ Card(image domain.Image) {
@@ -42,7 +107,8 @@ templ Card(image domain.Image) {
 			hx-target="this"
 			hx-swap="outerHTML"
 		}
-		class={ templ.KV("skeleton opacity-30", image.Status == domain.ImageStatusStarted), "w-56 h-72 bg-black rounded-lg" }
+		onclick={ templ.ComponentScript{Call: fmt.Sprintf("image_modal_%d.showModal()", image.ID)} }
+		class={ templ.KV("skeleton opacity-30", image.Status == domain.ImageStatusStarted), "w-56 h-72 rounded-lg cursor-pointer" }
 	>
 		if image.Status == domain.ImageStatusFailed {
 			<div class="flex justify-center items-center h-full w-full">
@@ -55,5 +121,13 @@ templ Card(image domain.Image) {
 		} else if image.Status == domain.ImageStatusSucceeded {
 			<img src={ image.Url } class="w-full h-full object-cover rounded-lg"/>
 		}
+		<dialog id={ fmt.Sprintf("image_modal_%d", image.ID) } class="modal">
+			<div class="modal-box p-0 w-3/5 h-4/5 max-w-full cursor-pointer">
+				<img src={ image.Url } class="w-full h-full object-cover rounded-lg"/>
+			</div>
+			<form method="dialog" class="modal-backdrop">
+				<button>close</button>
+			</form>
+		</dialog>
 	</div>
 }

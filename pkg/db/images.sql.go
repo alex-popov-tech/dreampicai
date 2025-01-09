@@ -13,18 +13,20 @@ import (
 
 const imageCreate = `-- name: ImageCreate :one
 insert into
-  images (provider_id, owner_id, prompt, status)
+  images (provider_id, owner_id, prompt, negative_prompt, status, model)
 values
-  ($1, $2, $3, $4)
+  ($1, $2, $3, $4, $5, $6)
 returning
-  id, provider_id, owner_id, status, prompt, url, created_at
+  id, provider_id, owner_id, status, prompt, negative_prompt, model, url, created_at
 `
 
 type ImageCreateParams struct {
-	ProviderID string
-	OwnerID    pgtype.Int4
-	Prompt     string
-	Status     ImageStatus
+	ProviderID     string
+	OwnerID        pgtype.Int4
+	Prompt         string
+	NegativePrompt string
+	Status         ImageStatus
+	Model          string
 }
 
 func (q *Queries) ImageCreate(ctx context.Context, arg ImageCreateParams) (Image, error) {
@@ -32,7 +34,9 @@ func (q *Queries) ImageCreate(ctx context.Context, arg ImageCreateParams) (Image
 		arg.ProviderID,
 		arg.OwnerID,
 		arg.Prompt,
+		arg.NegativePrompt,
 		arg.Status,
+		arg.Model,
 	)
 	var i Image
 	err := row.Scan(
@@ -41,6 +45,8 @@ func (q *Queries) ImageCreate(ctx context.Context, arg ImageCreateParams) (Image
 		&i.OwnerID,
 		&i.Status,
 		&i.Prompt,
+		&i.NegativePrompt,
+		&i.Model,
 		&i.Url,
 		&i.CreatedAt,
 	)
@@ -49,7 +55,7 @@ func (q *Queries) ImageCreate(ctx context.Context, arg ImageCreateParams) (Image
 
 const imageGet = `-- name: ImageGet :one
 select
-  id, provider_id, owner_id, status, prompt, url, created_at
+  id, provider_id, owner_id, status, prompt, negative_prompt, model, url, created_at
 from
   images
 where
@@ -71,6 +77,8 @@ func (q *Queries) ImageGet(ctx context.Context, arg ImageGetParams) (Image, erro
 		&i.OwnerID,
 		&i.Status,
 		&i.Prompt,
+		&i.NegativePrompt,
+		&i.Model,
 		&i.Url,
 		&i.CreatedAt,
 	)
@@ -79,7 +87,7 @@ func (q *Queries) ImageGet(ctx context.Context, arg ImageGetParams) (Image, erro
 
 const imageList = `-- name: ImageList :many
 select
-  id, provider_id, owner_id, status, prompt, url, created_at
+  id, provider_id, owner_id, status, prompt, negative_prompt, model, url, created_at
 from
   images
 where
@@ -105,6 +113,8 @@ func (q *Queries) ImageList(ctx context.Context, ownerID pgtype.Int4) ([]Image, 
 			&i.OwnerID,
 			&i.Status,
 			&i.Prompt,
+			&i.NegativePrompt,
+			&i.Model,
 			&i.Url,
 			&i.CreatedAt,
 		); err != nil {
@@ -126,7 +136,7 @@ set
 where
   provider_id = $3
 returning
-  id, provider_id, owner_id, status, prompt, url, created_at
+  id, provider_id, owner_id, status, prompt, negative_prompt, model, url, created_at
 `
 
 type ImageUpdateParams struct {
@@ -144,6 +154,8 @@ func (q *Queries) ImageUpdate(ctx context.Context, arg ImageUpdateParams) (Image
 		&i.OwnerID,
 		&i.Status,
 		&i.Prompt,
+		&i.NegativePrompt,
+		&i.Model,
 		&i.Url,
 		&i.CreatedAt,
 	)

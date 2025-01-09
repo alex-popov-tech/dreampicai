@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -36,47 +37,91 @@ func GenerateView(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	slog.Info("[GenerateView]", "images", images)
-	data := view.GenerateData{Images: images}
+	data := view.GenerateViewData{
+		Images: images,
+		GenerateFormData: view.GenerateFormData{
+			SelectedModel:  toSelectOption(domain.DEFAULT_MODEL),
+			Models:         toSelectOptions(domain.MODELS),
+			Prompt:         domain.DEFAULT_PROMPT,
+			NegativePrompt: domain.DEFAULT_NEGATIVE_PROMPT,
+			Count:          domain.DEFAULT_COUNT,
+		},
+	}
 	return view.Generate(data).Render(r.Context(), w)
 }
 
 func Generate(w http.ResponseWriter, r *http.Request) error {
-	prompt := "Ukrainian woman in national dress, warm color palette, muted colors, detailed, 8k"
-	prediction, err := replicate.Client.CreatePrediction(
-		r.Context(),
-		os.Getenv("REPLICATE_MODEL"),
-		replicate.PredictionInput{"prompt": prompt},
-		&replicate.Webhook{
-			URL:    os.Getenv("REPLICATE_WEBHOOK"),
-			Events: []replicate.WebhookEventType{"completed"},
-		},
-		false,
+	var model domain.ReplicateModel = r.FormValue("model")
+	prompt := r.FormValue("prompt")
+	negativePrompt := r.FormValue("negative_prompt")
+	countStr := r.FormValue("count")
+	if _, err := strconv.Atoi(countStr); prompt == "" || negativePrompt == "" || countStr == "" ||
+		err != nil {
+		return fmt.Errorf(
+			"Missing/invalid one of required body params, prompt:%s, negative_prompt:%s, count:%s",
+			prompt,
+			negativePrompt,
+			countStr,
+		)
+	}
+	count, _ := strconv.Atoi(countStr)
+	fmt.Printf(
+		"model: %s, prompt: %s, negative_prompt: %s, count: %d\n",
+		model,
+		prompt,
+		negativePrompt,
+		count,
 	)
-	if err != nil {
-		slog.Info("[Generate] creating prediction", "err", err)
-		return err
-	}
 
-	dbImage, err := db.Client.ImageCreate(r.Context(), db.ImageCreateParams{
-		ProviderID: prediction.ID,
-		OwnerID:    pgtype.Int4{Int32: utils.GetAccountFromRequest(r).ID, Valid: true},
-		Status:     "started",
-		Prompt:     prompt,
-	})
-	if err != nil {
-		slog.Info("[Generate] inserting image", "err", err)
-		return err
-	}
+	for i := 0; i < count; i++ {
+		prediction, err := replicate.Client.CreatePrediction(
+			r.Context(),
+			model,
+			replicate.PredictionInput{
+				"prompt":              prompt,
+				"negative_prompt":     negativePrompt,
+				"num_outputs":         count,
+				"width":               960,
+				"height":              1280,
+				"output_quality":      100,
+				"prompt_strength":     0.8,
+				"num_inference_steps": 10,
+			},
+			&replicate.Webhook{
+				URL:    os.Getenv("REPLICATE_WEBHOOK"),
+				Events: []replicate.WebhookEventType{"completed"},
+			},
+			false,
+		)
+		if err != nil {
+			slog.Info("[Generate] creating prediction", "err", err)
+			return err
+		}
 
-	image := domain.Image{
-		ID:     dbImage.ID,
-		Status: dbImage.Status,
-		Prompt: dbImage.Prompt,
-		Url:    dbImage.Url.String,
+		_, err = db.Client.ImageCreate(r.Context(), db.ImageCreateParams{
+			ProviderID:     prediction.ID,
+			OwnerID:        pgtype.Int4{Int32: utils.GetAccountFromRequest(r).ID, Valid: true},
+			Status:         "started",
+			Prompt:         prompt,
+			Model:          model,
+			NegativePrompt: negativePrompt,
+		})
+		if err != nil {
+			slog.Info("[Generate] inserting image", "err", err)
+			return err
+		}
 	}
 
 	slog.Info("[Generate] success")
-	return view.Card(image).Render(r.Context(), w)
+	w.Header().Add("HX-Redirect", "/generate")
+	return view.GenerateForm(view.GenerateFormData{
+		Prompt:         prompt,
+		NegativePrompt: negativePrompt,
+		Count:          countStr,
+		SelectedModel:  toSelectOption(model),
+		Models:         toSelectOptions(domain.MODELS),
+	}).
+		Render(r.Context(), w)
 }
 
 func GeneratedWebhook(w http.ResponseWriter, r *http.Request) error {
@@ -166,4 +211,42 @@ func getImageUrlFromReplicate(responseBody map[string]interface{}) (string, erro
 		}
 	}
 	return "", fmt.Errorf("failed to get image url from replicate")
+}
+
+func toSelectOptions(models []domain.ReplicateModel) []view.SelectOption {
+	options := make([]view.SelectOption, len(models))
+	for i, model := range models {
+		options[i] = toSelectOption(model)
+	}
+	return options
+}
+
+func toSelectOption(model domain.ReplicateModel) view.SelectOption {
+	switch model {
+	case domain.REPLICATE_MODEL_PLAYGROUND:
+		return view.SelectOption{
+			Value: model,
+			Text:  "playgroundai/playground-v2.5-1024px-aesthetic",
+		}
+	case domain.REPLICATE_MODEL_SDXL:
+		return view.SelectOption{
+			Value: model,
+			Text:  "stability-ai / sdxl",
+		}
+	case domain.REPLICATE_MODEL_KADNINSKY:
+		return view.SelectOption{
+			Value: model,
+			Text:  "ai-forged/kadninsky-2.0",
+		}
+	case domain.REPLICATE_MODEL_PROTEUS:
+		return view.SelectOption{
+			Value: model,
+			Text:  "datacte / proteus-v0.3",
+		}
+	default:
+		return view.SelectOption{
+			Value: model,
+			Text:  "Unknown Model",
+		}
+	}
 }

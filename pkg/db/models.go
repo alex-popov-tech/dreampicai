@@ -62,11 +62,13 @@ type Account struct {
 }
 
 type Image struct {
-	ID         int32
-	ProviderID string
-	OwnerID    pgtype.Int4
-	Status     ImageStatus
-	Prompt     string
-	Url        pgtype.Text
-	CreatedAt  pgtype.Timestamptz
+	ID             int32
+	ProviderID     string
+	OwnerID        pgtype.Int4
+	Status         ImageStatus
+	Prompt         string
+	NegativePrompt string
+	Model          string
+	Url            pgtype.Text
+	CreatedAt      pgtype.Timestamptz
 }
