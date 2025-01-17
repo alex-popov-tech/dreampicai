@@ -2,26 +2,26 @@ package db
 
 import (
 	"context"
-	"log"
-	"log/slog"
 	"os"
 	"os/signal"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var Client *Queries
 
-func InitClient(databaseUrl string) (*pgx.Conn, error) {
+func InitClient(databaseUrl string) (*pgxpool.Pool, error) {
 	ctx := context.Background()
-	config, err := pgx.ParseConfig(databaseUrl)
+	config, err := pgxpool.ParseConfig(databaseUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	config.Tracer = &LoggingQueryTracer{logger: slog.Default()}
-	config.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
-	conn, err := pgx.ConnectConfig(ctx, config)
+	config.MaxConns = 10
+	// config.Tracer = &LoggingQueryTracer{logger: slog.Default()}
+	// config.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
+
+	conn, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -36,13 +36,10 @@ func InitClient(databaseUrl string) (*pgx.Conn, error) {
 	return conn, err
 }
 
-func listenInterrupts(conn *pgx.Conn) {
+func listenInterrupts(conn *pgxpool.Pool) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 	<-signals
-	err := conn.Close(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
+	conn.Close()
 	os.Exit(0)
 }

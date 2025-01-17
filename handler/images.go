@@ -16,6 +16,33 @@ import (
 	"dreampicai/view"
 )
 
+func GetImages(w http.ResponseWriter, r *http.Request) error {
+	account := utils.GetAccountFromRequest(r)
+	dbImages, err := db.Client.ImageList(r.Context(), pgtype.Int4{Int32: account.ID, Valid: true})
+	if err != nil {
+		slog.Info("[GetImages] getting image from db", "err", err)
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error": "Image with such owner not found with",
+		})
+		return nil
+	}
+
+	images := make([]domain.Image, len(dbImages))
+	for i, dbImage := range dbImages {
+		images[i] = domain.Image{
+			ID:     dbImage.ID,
+			Status: dbImage.Status,
+			Prompt: dbImage.Prompt,
+		}
+		if dbImage.Url.Valid {
+			images[i].Url = dbImage.Url.String
+		}
+	}
+
+	return view.ImageCards(images).Render(r.Context(), w)
+}
+
 func GetImage(w http.ResponseWriter, r *http.Request) error {
 	account := utils.GetAccountFromRequest(r)
 	idAsString := chi.URLParam(r, "id")
@@ -48,5 +75,5 @@ func GetImage(w http.ResponseWriter, r *http.Request) error {
 		Url:    dbImage.Url.String,
 	}
 
-	return view.Card(image).Render(r.Context(), w)
+	return view.ImageCard(image).Render(r.Context(), w)
 }

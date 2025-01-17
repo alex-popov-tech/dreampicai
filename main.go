@@ -28,7 +28,7 @@ func initialize() error {
 
 	_ = supabase.InitClient(env.SupabaseProjectURL, env.SupabaseServiceSecretKey)
 
-	_, err = db.InitClient(env.DatabaseDirectURL)
+	_, err = db.InitClient(env.DatabasePoolURL)
 	if err != nil {
 		return fmt.Errorf("Error creating database client \n%v\n", err)
 	}
@@ -67,11 +67,11 @@ func main() {
 
 		mux.Group(func(mux chi.Router) {
 			mux.Use(utils.Protected)
-			mux.Handle("GET /settings", utils.MakeRoute(handler.SettingsView))
 		})
 		mux.Handle("GET /generate", utils.MakeRoute(handler.GenerateView))
 		mux.Handle("POST /generate", utils.MakeRoute(handler.Generate))
 		mux.Handle("GET /images/{id}", utils.MakeRoute(handler.GetImage))
+		mux.Handle("GET /images", utils.MakeRoute(handler.GetImages))
 	})
 
 	mux.Handle("POST /webhook/replicate", utils.MakeRoute(handler.GeneratedWebhook))

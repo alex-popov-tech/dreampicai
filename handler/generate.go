@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -36,7 +37,6 @@ func GenerateView(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	slog.Info("[GenerateView]", "images", images)
 	data := view.GenerateViewData{
 		Images: images,
 		GenerateFormData: view.GenerateFormData{
@@ -57,6 +57,7 @@ func Generate(w http.ResponseWriter, r *http.Request) error {
 	countStr := r.FormValue("count")
 	if _, err := strconv.Atoi(countStr); prompt == "" || negativePrompt == "" || countStr == "" ||
 		err != nil {
+		time.Sleep(5 * time.Second)
 		return fmt.Errorf(
 			"Missing/invalid one of required body params, prompt:%s, negative_prompt:%s, count:%s",
 			prompt,
@@ -65,13 +66,6 @@ func Generate(w http.ResponseWriter, r *http.Request) error {
 		)
 	}
 	count, _ := strconv.Atoi(countStr)
-	fmt.Printf(
-		"model: %s, prompt: %s, negative_prompt: %s, count: %d\n",
-		model,
-		prompt,
-		negativePrompt,
-		count,
-	)
 
 	for i := 0; i < count; i++ {
 		prediction, err := replicate.Client.CreatePrediction(
@@ -113,7 +107,7 @@ func Generate(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	slog.Info("[Generate] success")
-	w.Header().Add("HX-Redirect", "/generate")
+	w.Header().Add("HX-Trigger", "refresh")
 	return view.GenerateForm(view.GenerateFormData{
 		Prompt:         prompt,
 		NegativePrompt: negativePrompt,
@@ -227,11 +221,6 @@ func toSelectOption(model domain.ReplicateModel) view.SelectOption {
 		return view.SelectOption{
 			Value: model,
 			Text:  "playgroundai/playground-v2.5-1024px-aesthetic",
-		}
-	case domain.REPLICATE_MODEL_SDXL:
-		return view.SelectOption{
-			Value: model,
-			Text:  "stability-ai / sdxl",
 		}
 	case domain.REPLICATE_MODEL_KADNINSKY:
 		return view.SelectOption{

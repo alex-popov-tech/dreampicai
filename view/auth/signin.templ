@@ -14,7 +14,7 @@ type SigninData struct {
 
 templ Signin(redirect string) {
 	@layout.HomeLayout() {
-		<div class="bg-base-300 rounded-lg shadow-xl p-8 max-w-md w-full mt-36 mb-auto mx-auto">
+		<div class="bg-base-300 rounded-lg shadow-xl p-8 max-w-md w-full mt-16 mb-auto mx-auto">
 			@SigninForm(SigninData{}, SigninErrors{}, redirect)
 		</div>
 	}
