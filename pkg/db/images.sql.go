@@ -17,7 +17,7 @@ insert into
 values
   ($1, $2, $3, $4, $5, $6)
 returning
-  id, provider_id, owner_id, status, prompt, negative_prompt, model, url, created_at
+  id, provider_id, owner_id, status, prompt, negative_prompt, model, filename, created_at
 `
 
 type ImageCreateParams struct {
@@ -47,7 +47,7 @@ func (q *Queries) ImageCreate(ctx context.Context, arg ImageCreateParams) (Image
 		&i.Prompt,
 		&i.NegativePrompt,
 		&i.Model,
-		&i.Url,
+		&i.Filename,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -55,7 +55,7 @@ func (q *Queries) ImageCreate(ctx context.Context, arg ImageCreateParams) (Image
 
 const imageGet = `-- name: ImageGet :one
 select
-  id, provider_id, owner_id, status, prompt, negative_prompt, model, url, created_at
+  id, provider_id, owner_id, status, prompt, negative_prompt, model, filename, created_at
 from
   images
 where
@@ -79,7 +79,7 @@ func (q *Queries) ImageGet(ctx context.Context, arg ImageGetParams) (Image, erro
 		&i.Prompt,
 		&i.NegativePrompt,
 		&i.Model,
-		&i.Url,
+		&i.Filename,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -87,7 +87,7 @@ func (q *Queries) ImageGet(ctx context.Context, arg ImageGetParams) (Image, erro
 
 const imageList = `-- name: ImageList :many
 select
-  id, provider_id, owner_id, status, prompt, negative_prompt, model, url, created_at
+  id, provider_id, owner_id, status, prompt, negative_prompt, model, filename, created_at
 from
   images
 where
@@ -115,7 +115,7 @@ func (q *Queries) ImageList(ctx context.Context, ownerID pgtype.Int4) ([]Image, 
 			&i.Prompt,
 			&i.NegativePrompt,
 			&i.Model,
-			&i.Url,
+			&i.Filename,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -132,21 +132,21 @@ const imageUpdate = `-- name: ImageUpdate :one
 update images
 set
   status = $1,
-  url = $2
+  filename = $2
 where
   provider_id = $3
 returning
-  id, provider_id, owner_id, status, prompt, negative_prompt, model, url, created_at
+  id, provider_id, owner_id, status, prompt, negative_prompt, model, filename, created_at
 `
 
 type ImageUpdateParams struct {
 	Status     ImageStatus
-	Url        pgtype.Text
+	Filename   pgtype.Text
 	ProviderID string
 }
 
 func (q *Queries) ImageUpdate(ctx context.Context, arg ImageUpdateParams) (Image, error) {
-	row := q.db.QueryRow(ctx, imageUpdate, arg.Status, arg.Url, arg.ProviderID)
+	row := q.db.QueryRow(ctx, imageUpdate, arg.Status, arg.Filename, arg.ProviderID)
 	var i Image
 	err := row.Scan(
 		&i.ID,
@@ -156,7 +156,7 @@ func (q *Queries) ImageUpdate(ctx context.Context, arg ImageUpdateParams) (Image
 		&i.Prompt,
 		&i.NegativePrompt,
 		&i.Model,
-		&i.Url,
+		&i.Filename,
 		&i.CreatedAt,
 	)
 	return i, err

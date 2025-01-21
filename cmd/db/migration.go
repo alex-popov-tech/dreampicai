@@ -29,7 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := sql.Open("pgx", env.DatabaseDirectURL)
+	db, err := sql.Open("pgx", env.DatabasePoolURL)
 	if err != nil {
 		log.Fatal(err)
 	}

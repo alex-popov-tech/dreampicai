@@ -90,7 +90,7 @@ func WithUser(handler http.Handler) http.Handler {
 			return
 		}
 
-		account, err := db.Client.AccountGet(r.Context(), int32(accountId))
+		account, err := db.Q.AccountGet(r.Context(), int32(accountId))
 		if err != nil {
 			slog.Info("[WithUser] getting account from db", "err", err)
 			serverRequestWithNoAccount(w, r, handler)

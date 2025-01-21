@@ -10,7 +10,6 @@ import (
 
 type Env struct {
 	Port               uint   `env:"PORT"                validate:"required,min=1024,max=65535"`
-	DatabaseDirectURL  string `env:"DATABASE_DIRECT_URL" validate:"required,url"`
 	DatabasePoolURL    string `env:"DATABASE_POOL_URL"   validate:"required,url"`
 	DatabaseMigrations string `env:"DATABASE_MIGRATIONS" validate:"required"`
 
@@ -24,6 +23,8 @@ type Env struct {
 	ReplicateSecret  string `env:"REPLICATE_SECRET"  validate:"required"`
 	ReplicateToken   string `env:"REPLICATE_TOKEN"   validate:"required"`
 	ReplicateWebhook string `env:"REPLICATE_WEBHOOK" validate:"required,url"`
+
+	ImagesDir string `env:"IMAGES_DIR" validate:"required"`
 }
 
 func ValidateEnv() (Env, error) {

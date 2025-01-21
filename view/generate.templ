@@ -1,9 +1,10 @@
 package view
 
 import (
-	"fmt"
-	"dreampicai/view/layout"
 	"dreampicai/domain"
+	"dreampicai/view/layout"
+	"dreampicai/view/ui"
+	"fmt"
 )
 
 type GenerateViewData struct {
@@ -22,6 +23,8 @@ type GenerateFormData struct {
 	Prompt         string
 	NegativePrompt string
 	Count          string
+	ToastMessage   string
+	ToastStatus    string
 }
 
 templ Generate(data GenerateViewData) {
@@ -91,6 +94,9 @@ templ GenerateForm(data GenerateFormData) {
     }
   </style>
 		</div>
+		if data.ToastMessage != "" {
+			@ui.Toast(data.ToastMessage, data.ToastStatus)
+		}
 	</form>
 }
 
@@ -130,7 +136,7 @@ templ ImageCard(image domain.Image) {
 			hx-swap="outerHTML"
 		}
 		onclick={ templ.ComponentScript{Call: fmt.Sprintf("image_modal_%d.showModal()", image.ID)} }
-		class={ templ.KV("skeleton opacity-30", image.Status == domain.ImageStatusStarted), "w-56 h-72 rounded-lg cursor-pointer" }
+		class={ templ.KV("skeleton opacity-30", image.Status == domain.ImageStatusStarted), "w-56 h-72 rounded-lg cursor-pointer grow" }
 	>
 		if image.Status == domain.ImageStatusFailed {
 			<div class="flex justify-center items-center h-full w-full">

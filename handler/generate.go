@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"time"
 
@@ -20,7 +20,7 @@ import (
 
 func GenerateView(w http.ResponseWriter, r *http.Request) error {
 	account := utils.GetAccountFromRequest(r)
-	dbImages, err := db.Client.ImageList(r.Context(), pgtype.Int4{Int32: account.ID, Valid: true})
+	dbImages, err := db.Q.ImageList(r.Context(), pgtype.Int4{Int32: account.ID, Valid: true})
 	if err != nil {
 		return err
 	}
@@ -32,8 +32,8 @@ func GenerateView(w http.ResponseWriter, r *http.Request) error {
 			Status: dbImage.Status,
 			Prompt: dbImage.Prompt,
 		}
-		if dbImage.Url.Valid {
-			images[i].Url = dbImage.Url.String
+		if dbImage.Filename.Valid {
+			images[i].Url = path.Join(os.Getenv("IMAGES_DIR"), dbImage.Filename.String)
 		}
 	}
 
@@ -74,7 +74,7 @@ func Generate(w http.ResponseWriter, r *http.Request) error {
 			replicate.PredictionInput{
 				"prompt":              prompt,
 				"negative_prompt":     negativePrompt,
-				"num_outputs":         count,
+				"num_outputs":         1,
 				"width":               960,
 				"height":              1280,
 				"output_quality":      100,
@@ -92,7 +92,7 @@ func Generate(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 
-		_, err = db.Client.ImageCreate(r.Context(), db.ImageCreateParams{
+		_, err = db.Q.ImageCreate(r.Context(), db.ImageCreateParams{
 			ProviderID:     prediction.ID,
 			OwnerID:        pgtype.Int4{Int32: utils.GetAccountFromRequest(r).ID, Valid: true},
 			Status:         "started",
@@ -114,97 +114,10 @@ func Generate(w http.ResponseWriter, r *http.Request) error {
 		Count:          countStr,
 		SelectedModel:  toSelectOption(model),
 		Models:         toSelectOptions(domain.MODELS),
+		ToastMessage:   "Prompt Submitted! Be aware that generations could take up to 1-3 min depending on model",
+		ToastStatus:    "success",
 	}).
 		Render(r.Context(), w)
-}
-
-func GeneratedWebhook(w http.ResponseWriter, r *http.Request) error {
-	_, err := replicate.ValidateWebhookRequest(r, os.Getenv("REPLICATE_SECRET"))
-	if err != nil {
-		slog.Info("[GenerateWebhook] Validations webhook", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Webhook validation error",
-		})
-		return err
-	}
-
-	parsed := map[string]interface{}{}
-	err = json.NewDecoder(r.Body).Decode(&parsed)
-	defer r.Body.Close()
-	if err != nil {
-		slog.Info("[GenerateWebhook] Parsing json", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Parsing json error",
-		})
-		return err
-	}
-
-	id, ok := parsed["id"].(string)
-	if !ok {
-		slog.Info("[GenerateWebhook] Missing prediction id")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Missing prediction id",
-		})
-		return err
-	}
-	rawStatus, ok := parsed["status"].(string)
-	if !ok {
-		slog.Info("[GenerateWebhook] Missing prediction status")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Missing prediction status",
-		})
-		return err
-	}
-	status, err := getImageStatusFromString(rawStatus)
-	if err != nil {
-		slog.Info("[GenerateWebhook] Wrong prediction status", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Wrong prediction status",
-		})
-		return err
-	}
-	url, err := getImageUrlFromReplicate(parsed)
-	if err != nil {
-		slog.Info("[GenerateWebhook] Missing output image url", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Missing output image url",
-		})
-		return err
-	}
-
-	db.Client.ImageUpdate(r.Context(), db.ImageUpdateParams{
-		ProviderID: id,
-		Status:     status,
-		Url:        pgtype.Text{String: url, Valid: true},
-	})
-	return err
-}
-
-func getImageStatusFromString(status string) (db.ImageStatus, error) {
-	switch status {
-	case "succeeded":
-		return db.ImageStatusSucceeded, nil
-	case "failed":
-		return db.ImageStatusFailed, nil
-	default:
-		return "", fmt.Errorf("invalid image status: %s", status)
-	}
-}
-
-func getImageUrlFromReplicate(responseBody map[string]interface{}) (string, error) {
-	if outputArr, ok := responseBody["output"].([]interface{}); ok && len(outputArr) > 0 &&
-		outputArr[0] != nil {
-		if url, ok := outputArr[0].(string); ok && url != "" {
-			return url, nil
-		}
-	}
-	return "", fmt.Errorf("failed to get image url from replicate")
 }
 
 func toSelectOptions(models []domain.ReplicateModel) []view.SelectOption {

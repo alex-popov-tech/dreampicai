@@ -1,9 +1,12 @@
 package ui
 
 templ Toast(message, status string) {
-	<div class="toast toast-top toast-end animate-[fadeOut_1s_ease_3s_forwards]">
+	<div
+		id="toast"
+		class="toast toast-top toast-end"
+	>
 		<div
-			class={ "alert",
+			class={ "alert text-md p-3 animate-[fadeOut_1s_ease-out_3s_forwards]",
       status,
       templ.KV("alert-error", status == "error"),
       templ.KV("alert-info", status == "info"),
@@ -11,5 +14,10 @@ templ Toast(message, status string) {
 		>
 			<span>{ message }</span>
 		</div>
+		<script>
+        setTimeout(() => {
+          document.getElementById('toast').remove();
+        }, 4000);
+    </script>
 	</div>
 }

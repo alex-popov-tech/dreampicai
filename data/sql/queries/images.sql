@@ -31,7 +31,7 @@ returning
 update images
 set
   status = $1,
-  url = $2
+  filename = $2
 where
   provider_id = $3
 returning

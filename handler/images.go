@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -18,7 +20,7 @@ import (
 
 func GetImages(w http.ResponseWriter, r *http.Request) error {
 	account := utils.GetAccountFromRequest(r)
-	dbImages, err := db.Client.ImageList(r.Context(), pgtype.Int4{Int32: account.ID, Valid: true})
+	dbImages, err := db.Q.ImageList(r.Context(), pgtype.Int4{Int32: account.ID, Valid: true})
 	if err != nil {
 		slog.Info("[GetImages] getting image from db", "err", err)
 		w.WriteHeader(http.StatusNotFound)
@@ -35,8 +37,8 @@ func GetImages(w http.ResponseWriter, r *http.Request) error {
 			Status: dbImage.Status,
 			Prompt: dbImage.Prompt,
 		}
-		if dbImage.Url.Valid {
-			images[i].Url = dbImage.Url.String
+		if dbImage.Filename.Valid {
+			images[i].Url = path.Join(os.Getenv("IMAGES_DIR"), dbImage.Filename.String)
 		}
 	}
 
@@ -55,7 +57,7 @@ func GetImage(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	dbImage, err := db.Client.ImageGet(
+	dbImage, err := db.Q.ImageGet(
 		r.Context(),
 		db.ImageGetParams{ID: int32(id), OwnerID: pgtype.Int4{Int32: account.ID, Valid: true}},
 	)
@@ -72,7 +74,9 @@ func GetImage(w http.ResponseWriter, r *http.Request) error {
 		ID:     dbImage.ID,
 		Status: dbImage.Status,
 		Prompt: dbImage.Prompt,
-		Url:    dbImage.Url.String,
+	}
+	if dbImage.Filename.Valid {
+		image.Url = path.Join(os.Getenv("IMAGES_DIR"), dbImage.Filename.String)
 	}
 
 	return view.ImageCard(image).Render(r.Context(), w)

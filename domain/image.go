@@ -7,27 +7,6 @@ import (
 )
 
 const (
-	ImageStatusStarted   ImageStatus = "started"
-	ImageStatusCancelled ImageStatus = "cancelled"
-	ImageStatusFailed    ImageStatus = "failed"
-	ImageStatusSucceeded ImageStatus = "succeeded"
-)
-
-type (
-	ImageStatus = db.ImageStatus
-	Image       struct {
-		ID        int32
-		OwnerID   int32
-		Status    ImageStatus
-		Prompt    string
-		Url       string
-		CreatedAt time.Time
-	}
-)
-
-type ReplicateModel = string
-
-const (
 	// playgroundai/playground-v2.5-1024px-aesthetic:a45f82a1382bed5c7aeb861dac7c7d191b0fdf74d8d57c4a0e6ed7d4d0bf7d24
 	REPLICATE_MODEL_PLAYGROUND ReplicateModel = "a45f82a1382bed5c7aeb861dac7c7d191b0fdf74d8d57c4a0e6ed7d4d0bf7d24"
 	// ai-forever/kandinsky-2.2
@@ -48,3 +27,24 @@ const (
 	DEFAULT_NEGATIVE_PROMPT = "ugly, deformed, noisy, blurry, distorted, worst quality, low quality"
 	DEFAULT_COUNT           = "1"
 )
+
+const (
+	ImageStatusStarted   ImageStatus = "started"
+	ImageStatusCancelled ImageStatus = "cancelled"
+	ImageStatusFailed    ImageStatus = "failed"
+	ImageStatusSucceeded ImageStatus = "succeeded"
+)
+
+type (
+	ImageStatus = db.ImageStatus
+	Image       struct {
+		ID        int32
+		OwnerID   int32
+		Status    ImageStatus
+		Prompt    string
+		Url       string
+		CreatedAt time.Time
+	}
+)
+
+type ReplicateModel = string

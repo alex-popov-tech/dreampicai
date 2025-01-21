@@ -47,12 +47,12 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	account, err := db.Client.AccountGetByUserId(
+	account, err := db.Q.AccountGetByUserId(
 		r.Context(),
 		pgtype.UUID{Bytes: uuidBytes, Valid: true},
 	)
 	if errors.Is(err, sql.ErrNoRows) {
-		account, err = db.Client.AccountCreate(
+		account, err = db.Q.AccountCreate(
 			r.Context(),
 			db.AccountCreateParams{
 				UserID:   pgtype.UUID{Bytes: uuidBytes, Valid: true},

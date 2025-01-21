@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS images (
   prompt TEXT NOT NULL,
   negative_prompt TEXT NOT NULL,
   model TEXT NOT NULL,
-  url TEXT,
+  filename TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

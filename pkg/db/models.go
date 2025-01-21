@@ -69,6 +69,6 @@ type Image struct {
 	Prompt         string
 	NegativePrompt string
 	Model          string
-	Url            pgtype.Text
+	Filename       pgtype.Text
 	CreatedAt      pgtype.Timestamptz
 }

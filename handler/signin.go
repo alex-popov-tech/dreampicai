@@ -47,7 +47,7 @@ func Signin(w http.ResponseWriter, r *http.Request) error {
 		return auth.SigninForm(loginData, loginErrors, redirect).Render(r.Context(), w)
 	}
 
-	account, err := db.Client.AccountGetByUserId(r.Context(), pgtype.UUID{
+	account, err := db.Q.AccountGetByUserId(r.Context(), pgtype.UUID{
 		Bytes: uuidBytes,
 		Valid: true,
 	})
