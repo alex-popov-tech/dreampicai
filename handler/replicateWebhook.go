@@ -67,6 +67,13 @@ func GeneratedWebhook(w http.ResponseWriter, r *http.Request) error {
 		})
 		return err
 	}
+	if status == db.ImageStatusFailed {
+		_, err = db.Q.ImageUpdate(context.Background(), db.ImageUpdateParams{
+			ProviderID: id,
+			Status:     status,
+		})
+		return nil
+	}
 
 	urls, err := getImageUrlsFromReplicate(parsed)
 	if err != nil {
