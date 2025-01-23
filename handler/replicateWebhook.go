@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -131,6 +132,24 @@ func getImageUrlsFromReplicate(responseBody map[string]interface{}) ([]string, e
 }
 
 func writeImage(url, filepath string) error {
+	maxRetries := 3
+	var lastErr error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(attempt) * time.Second)
+		}
+
+		if err := downloadImage(url, filepath); err != nil {
+			lastErr = err
+			continue
+		}
+		return nil
+	}
+	return fmt.Errorf("failed after %d attempts: %v", maxRetries, lastErr)
+}
+
+func downloadImage(url, filepath string) error {
 	r, err := http.Get(url)
 	if err != nil {
 		return err
@@ -141,6 +160,7 @@ func writeImage(url, filepath string) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	_, err = io.Copy(file, r.Body)
 	return err
