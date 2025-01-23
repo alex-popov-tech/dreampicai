@@ -1,0 +1,56 @@
+package layout
+
+templ MobileAlert() {
+	<!-- Add this modal div at the end of your body tag -->
+	<div id="mobile-warning" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center">
+		<div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md mx-4">
+			<h2 class="text-xl font-bold mb-4">Desktop View Required</h2>
+			<p class="mb-4">
+				This website is optimized for desktop viewing. Please open it on a device with a larger screen for the best experience.
+			</p>
+			<div class="flex justify-center">
+				<button onclick="dismissWarning()" class="btn btn-secondary text-xl">
+					I Understand
+				</button>
+			</div>
+		</div>
+	</div>
+	<!-- Add this script after your HTMX script -->
+	<script>
+    // Configuration
+    const VIEWPORT_CONFIG = {
+        minWidth: 1024,
+        minHeight: 768
+    };
+
+    // DOM Elements
+    const mobileWarning = document.getElementById('mobile-warning');
+
+    // Show/Hide functions
+    function showWarning() {
+        mobileWarning.classList.remove('hidden');
+        mobileWarning.classList.add('flex');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+    }
+
+    function dismissWarning() {
+      mobileWarning.classList.remove('flex');
+        mobileWarning.classList.add('hidden');
+        document.body.style.overflow = ''; // Restore scrolling
+    }
+
+    // Viewport check function
+    function checkViewport() {
+        if (window.innerWidth < VIEWPORT_CONFIG.minWidth ||
+            window.innerHeight < VIEWPORT_CONFIG.minHeight) {
+            showWarning();
+        } else {
+            dismissWarning();
+        }
+    }
+
+    // Event listeners
+    window.addEventListener('load', checkViewport);
+    window.addEventListener('resize', checkViewport);
+</script>
+}
