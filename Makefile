@@ -41,8 +41,3 @@ live/server:
 		--build.stop_on_error false \
 		--misc.clean_on_exit true
 	@echo '--------------------------------------'
-
-prod/daemon:
-  systemctl start dreampicai
-prod/logs:
-  journalctl -u dreampicai -f
