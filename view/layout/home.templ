@@ -4,7 +4,7 @@ import "dreampicai/view/utils"
 
 templ HomeLayout() {
 	@AppLayout() {
-		<div class="min-h-screen flex flex-col">
+		<div class="h-screen flex flex-col">
 			<header class="navbar bg-base-100 opacity-80">
 				<div class="flex-1">
 					<a class="btn btn-ghost text-xl opacity-100" href="/">Dreampicai</a>
@@ -27,7 +27,7 @@ templ HomeLayout() {
 					</ul>
 				</div>
 			</header>
-			<div class="flex-1 flex overflow-auto">
+			<div class="flex-1">
 				{ children... }
 			</div>
 		</div>

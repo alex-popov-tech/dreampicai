@@ -29,7 +29,7 @@ type GenerateFormData struct {
 
 templ Generate(data GenerateViewData) {
 	@layout.HomeLayout() {
-		<div class="flex-1 flex gap-4">
+		<div class="flex-1 flex gap-4 px-4">
 			@GenerateForm(data.GenerateFormData)
 			@ImageCards(data.Images)
 		</div>
@@ -61,11 +61,11 @@ templ GenerateForm(data GenerateFormData) {
 					}
 				</select>
 			</label>
-			<label class="form-control grow">
+			<label class="form-control">
 				<div class="label">
 					<span class="label-text">Describe the portret you want to have</span>
 				</div>
-				<textarea minlength="10" name="prompt" class="textarea textarea-primary textarea-md h-full" placeholder="Prompt">{ data.Prompt }</textarea>
+				<textarea minlength="10" name="prompt" class="textarea textarea-primary textarea-md h-40" placeholder="Prompt">{ data.Prompt }</textarea>
 			</label>
 			<label class="form-control">
 				<div class="label">
