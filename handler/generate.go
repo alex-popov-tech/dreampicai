@@ -135,11 +135,6 @@ func toSelectOption(model domain.ReplicateModel) view.SelectOption {
 			Value: model,
 			Text:  "playgroundai/playground-v2.5-1024px-aesthetic",
 		}
-	case domain.REPLICATE_MODEL_KADNINSKY:
-		return view.SelectOption{
-			Value: model,
-			Text:  "ai-forged/kadninsky-2.0",
-		}
 	case domain.REPLICATE_MODEL_PROTEUS:
 		return view.SelectOption{
 			Value: model,
