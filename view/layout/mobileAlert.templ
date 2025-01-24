@@ -20,7 +20,6 @@ templ MobileAlert() {
     // Configuration
     const VIEWPORT_CONFIG = {
         minWidth: 1024,
-        minHeight: 768
     };
 
     // DOM Elements
@@ -41,8 +40,7 @@ templ MobileAlert() {
 
     // Viewport check function
     function checkViewport() {
-        if (window.innerWidth < VIEWPORT_CONFIG.minWidth ||
-            window.innerHeight < VIEWPORT_CONFIG.minHeight) {
+        if (window.innerWidth < VIEWPORT_CONFIG.minWidth) {
             showWarning();
         } else {
             dismissWarning();
